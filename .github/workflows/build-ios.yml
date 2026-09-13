@@ -93,9 +93,10 @@ jobs:
           security default-keychain -s "$KEYCHAIN_PATH"
 
           # Import the certificate into the Keychain
+          # Note: .p12 file has no password, so -P is empty string
           security import $HOME/certificates/distribution.p12 \
             -k "$KEYCHAIN_PATH" \
-            -P "${{ secrets.P12_PASSWORD }}" \
+            -P "" \
             -A  # Allow codesigning without prompting
 
           # Clean up the temporary certificate file (no longer needed)
