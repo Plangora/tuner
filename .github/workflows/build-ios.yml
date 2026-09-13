@@ -117,22 +117,14 @@ jobs:
           echo "${{ secrets.PROVISIONING_PROFILE }}" | base64 --decode > \
             $HOME/Library/MobileDevice/Provisioning\ Profiles/Tuner_AppStore.mobileprovision
 
-      # Step 6: Update iOS bundle ID and version
-      # Configure the app's identity for App Store
-      - name: Configure app identity
+      # Step 6: Log app version
+      # Bundle ID (com.plangora.tuner) is already set directly in the Xcode
+      # project (ios/Runner.xcodeproj/project.pbxproj), so no rewrite needed here.
+      - name: Log app version
         run: |
           # Read version from pubspec.yaml (format: version: 1.0.0+1)
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: \([0-9.]*\).*/\1/')
           BUILD_NUMBER=$(grep '^version:' pubspec.yaml | sed 's/.*+\([0-9]*\)/\1/')
-
-          # Update Xcode project with correct bundle ID, version, and build number
-          # --project: Path to the Xcode project
-          # --target: The app target (Runner)
-          # -k PRODUCT_BUNDLE_IDENTIFIER: App bundle ID
-          # -k MARKETING_VERSION: User-facing version (1.0.0)
-          # -k CURRENT_PROJECT_VERSION: Build number (1, 2, 3, etc.)
-          xcode-project=ios/Runner.xcodeproj
-          defaults write "$xcode-project/project.pbxproj" PRODUCT_BUNDLE_IDENTIFIER -string "com.plangora.tuner"
 
           echo "Version: $VERSION"
           echo "Build: $BUILD_NUMBER"
