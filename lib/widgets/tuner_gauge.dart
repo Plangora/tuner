@@ -94,14 +94,14 @@ class GaugePainter extends CustomPainter {
         ..strokeCap = StrokeCap.round,
     );
 
-    // Draw in-tune zone (green) at center (±5 cents)
-    // ±5 cents out of ±100 cents = ±5% of the arc
-    // 5 cents / 100 cents * 180 degrees = 9 degrees = π/20 radians
-    final inTuneZoneAngle = math.pi / 20; // ±5 cents equivalent
+    // Draw in-tune zone (green) at the center of the arc (±5 cents).
+    // The arc spans 180 degrees over ±100 cents, so ±5 cents is ±4.5 degrees.
+    final inTuneStart = _centsToAngle(-5);
+    final inTuneSweep = _centsToAngle(5) - inTuneStart;
     canvas.drawArc(
       rect,
-      math.pi - inTuneZoneAngle,
-      2 * inTuneZoneAngle,
+      inTuneStart,
+      inTuneSweep,
       false,
       Paint()
         ..color = Colors.green
@@ -150,11 +150,12 @@ class GaugePainter extends CustomPainter {
 
   /// Converts cents offset to angle in radians.
   ///
-  /// Maps -100 to +100 cents to an arc from π (180°) to 0 (0°).
-  /// Center (0 cents) is at π radians (180 degrees / left).
+  /// Maps -100 to +100 cents onto the drawn arc, which spans π (9 o'clock)
+  /// to 2π (3 o'clock).
+  /// Center (0 cents) is at 3π/2 radians, pointing straight up.
   /// Formula: centerAngle + (normalizedCents * maxAngleSpan / 2.0)
   double _centsToAngle(double cents) {
-    const centerAngle = math.pi; // 180 degrees (left)
+    const centerAngle = 3 * math.pi / 2; // straight up (12 o'clock)
     const maxAngleSpan = math.pi; // 180 degrees total span
     final normalizedCents = cents / 100.0;
     return centerAngle + (normalizedCents * maxAngleSpan / 2.0);
