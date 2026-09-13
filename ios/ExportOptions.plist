@@ -2,19 +2,23 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Signing method: app-store for App Store distribution -->
-	<!-- Alternative: ad-hoc, enterprise, development -->
+	<!-- Signing method: manual, so the provisioningProfiles mapping below is
+	     actually honored. "automatic" ignores that mapping and has Xcode try
+	     to auto-manage/create a profile itself, which requires network
+	     access to the Apple Developer portal and fails headlessly in CI
+	     with "No profiles for '<bundle id>' were found". -->
 	<key>signingStyle</key>
-	<string>automatic</string>
+	<string>manual</string>
 
 	<!-- Team ID: Your Apple Developer Team ID -->
 	<!-- Find at: https://developer.apple.com/account/#!/membership -->
 	<key>teamID</key>
 	<string>588QQUR9UG</string>
 
-	<!-- Method: app-store for App Store submission -->
+	<!-- Method: app-store-connect for App Store/TestFlight submission
+	     ("app-store" is deprecated as of recent Xcode versions) -->
 	<key>method</key>
-	<string>app-store</string>
+	<string>app-store-connect</string>
 
 	<!-- Provisioning profile mapping -->
 	<!-- Maps bundle ID to provisioning profile UUID -->
