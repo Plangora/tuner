@@ -10,7 +10,7 @@
 	<!-- Team ID: Your Apple Developer Team ID -->
 	<!-- Find at: https://developer.apple.com/account/#!/membership -->
 	<key>teamID</key>
-	<string>YOUR_TEAM_ID</string>
+	<string>588QQUR9UG</string>
 
 	<!-- Method: app-store for App Store submission -->
 	<key>method</key>
