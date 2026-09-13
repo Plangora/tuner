@@ -1,141 +1,188 @@
-/// Pitch detection using FFT and autocorrelation-based frequency analysis
+import 'dart:math' as math;
+
+/// Pitch detection using normalized autocorrelation.
+///
+/// The detector correlates a block of samples with delayed copies of itself.
+/// The lag (in samples) that produces the strongest correlation is the period
+/// of the signal, so the fundamental frequency is `sampleRate / lag`.
 class PitchDetector {
-  /// Detects pitch frequency from audio samples using FFT and autocorrelation
+  /// Maximum number of samples analysed per detection call.
+  static const int windowSize = 2048;
+
+  /// Lowest frequency the detector will report (Hz).
   ///
-  /// Returns the detected frequency in Hz, or 0 if detection failed.
+  /// Slightly below E2 (82.41 Hz), the lowest standard guitar string, so a
+  /// very flat low E can still be detected.
+  static const double minFrequency = 70.0;
+
+  /// Highest frequency the detector will report (Hz).
+  static const double maxFrequency = 1200.0;
+
+  /// Minimum RMS amplitude required before a block is analysed.
+  ///
+  /// Blocks quieter than this are treated as silence.
+  static const double silenceThreshold = 0.005;
+
+  /// Minimum normalized correlation required to accept a pitch estimate.
+  ///
+  /// Noise produces correlations far below this value.
+  static const double clarityThreshold = 0.4;
+
+  /// Detects the fundamental frequency of [audioSamples] recorded at
+  /// [sampleRate] Hz.
+  ///
+  /// Samples are expected to be normalized to the range [-1.0, 1.0].
+  /// Returns the detected frequency in Hz, or 0 if no reliable pitch was found
+  /// (too few samples, silence, noise, or a pitch outside
+  /// [minFrequency]–[maxFrequency]).
   static double detectPitch(List<double> audioSamples, int sampleRate) {
-    // Return 0 if samples is empty or too short
-    if (audioSamples.isEmpty || audioSamples.length < 512) {
+    if (sampleRate <= 0 || audioSamples.length < 512) {
       return 0;
     }
 
-    // Compute power spectrum
-    final spectrum = _computePowerSpectrum(audioSamples);
+    final samples = _prepare(audioSamples);
+    if (samples == null) {
+      return 0;
+    }
 
-    // Find peak bin (index with highest magnitude)
-    int peakBin = 0;
-    double maxMagnitude = 0;
-    for (int i = 0; i < spectrum.length; i++) {
-      if (spectrum[i] > maxMagnitude) {
-        maxMagnitude = spectrum[i];
-        peakBin = i;
+    final n = samples.length;
+    final minLag = math.max(2, (sampleRate / maxFrequency).floor());
+    final maxLag = math.min(n ~/ 2, (sampleRate / minFrequency).ceil());
+    if (maxLag <= minLag + 1) {
+      return 0;
+    }
+
+    final correlation = _normalizedAutocorrelation(samples, minLag, maxLag);
+
+    // Strongest correlation in the searched lag range.
+    var bestLag = -1;
+    var bestValue = 0.0;
+    for (var lag = minLag; lag <= maxLag; lag++) {
+      if (correlation[lag] > bestValue) {
+        bestValue = correlation[lag];
+        bestLag = lag;
       }
     }
 
-    // Convert bin to frequency
-    const int window = 2048;
-    double frequency = (peakBin * sampleRate) / window.toDouble();
+    if (bestLag < 0 || bestValue < clarityThreshold) {
+      return 0;
+    }
 
-    // Filter: return 0 if frequency < 80 Hz (below low E string)
-    if (frequency < 80) {
+    // Multiples of the true period correlate almost as strongly as the period
+    // itself, so prefer the earliest peak that is nearly as strong as the best
+    // one. This avoids reporting a note an octave (or more) too low.
+    final peakThreshold = bestValue * 0.9;
+    for (var lag = minLag + 1; lag < maxLag; lag++) {
+      if (correlation[lag] >= peakThreshold &&
+          correlation[lag] >= correlation[lag - 1] &&
+          correlation[lag] >= correlation[lag + 1]) {
+        bestLag = lag;
+        break;
+      }
+    }
+
+    final period = _interpolatePeak(correlation, bestLag, minLag, maxLag);
+    if (period <= 0) {
+      return 0;
+    }
+
+    final frequency = sampleRate / period;
+    if (frequency < minFrequency || frequency > maxFrequency) {
       return 0;
     }
 
     return frequency;
   }
 
-  /// Computes power spectrum using Hann window and autocorrelation
-  static List<double> _computePowerSpectrum(List<double> signal) {
-    // Apply Hann window to first 2048 samples
-    const int windowSize = 2048;
-    final windowed = <double>[];
-
-    for (int i = 0; i < windowSize && i < signal.length; i++) {
-      // Hann window: 0.5 * (1 - cos(2*pi*i/(N-1)))
-      final window = 0.5 * (1 - (_cos(2 * _pi * i / (windowSize - 1))));
-      windowed.add(signal[i] * window);
-    }
-
-    // Pad with zeros to 2048 samples
-    while (windowed.length < windowSize) {
-      windowed.add(0.0);
-    }
-
-    // Call autocorrelation method
-    return _autocorrelationPitch(windowed);
-  }
-
-  /// Computes autocorrelation for pitch detection
-  static List<double> _autocorrelationPitch(List<double> signal) {
-    const int minLag = 20;
-    const int maxLag = 2048;
-
-    final autocorr = <double>[];
-
-    // Compute autocorrelation for each lag
-    for (int lag = minLag; lag < maxLag && lag < signal.length; lag++) {
-      double sum = 0;
-      for (int i = 0; i < signal.length - lag; i++) {
-        sum += signal[i] * signal[i + lag];
-      }
-      autocorr.add(sum);
-    }
-
-    // Normalize by the maximum value
-    if (autocorr.isNotEmpty) {
-      double maxValue = 0;
-      for (final value in autocorr) {
-        if (value > maxValue) {
-          maxValue = value;
-        }
-      }
-
-      if (maxValue > 0) {
-        for (int i = 0; i < autocorr.length; i++) {
-          autocorr[i] = autocorr[i] / maxValue;
-        }
-      }
-    }
-
-    return autocorr;
-  }
-
-  /// Converts autocorrelation result to frequency
+  /// Copies up to [windowSize] samples, removes the DC offset, and rejects
+  /// blocks that are effectively silent.
   ///
-  /// Finds first significant peak above threshold 0.1 and converts lag to frequency.
-  static double frequencyFromAutocorrelation(
-      List<double> autocorr, int sampleRate) {
+  /// Returns null when the block is too quiet to analyse.
+  static List<double>? _prepare(List<double> audioSamples) {
+    final n = math.min(audioSamples.length, windowSize);
 
-    const double threshold = 0.1;
-    const int minLag = 20;
+    var mean = 0.0;
+    for (var i = 0; i < n; i++) {
+      mean += audioSamples[i];
+    }
+    mean /= n;
 
-    // Find first significant peak above threshold
-    for (int i = 0; i < autocorr.length; i++) {
-      if (autocorr[i] > threshold) {
-        // Convert lag to frequency
-        final frequency = sampleRate / (i + minLag).toDouble();
-        return frequency;
+    final samples = List<double>.filled(n, 0);
+    var energy = 0.0;
+    for (var i = 0; i < n; i++) {
+      final value = audioSamples[i] - mean;
+      samples[i] = value;
+      energy += value * value;
+    }
+
+    if (math.sqrt(energy / n) < silenceThreshold) {
+      return null;
+    }
+
+    return samples;
+  }
+
+  /// Computes the normalized autocorrelation of [samples] for every lag in
+  /// [minLag]..[maxLag].
+  ///
+  /// Each value is divided by the energy of the two overlapping segments, so a
+  /// perfectly periodic signal scores ~1.0 at its period regardless of lag.
+  /// Lags outside the requested range are left at 0.
+  static List<double> _normalizedAutocorrelation(
+    List<double> samples,
+    int minLag,
+    int maxLag,
+  ) {
+    final n = samples.length;
+
+    // Prefix sums of squares so segment energies are O(1) per lag.
+    final energyPrefix = List<double>.filled(n + 1, 0);
+    for (var i = 0; i < n; i++) {
+      energyPrefix[i + 1] = energyPrefix[i] + samples[i] * samples[i];
+    }
+
+    final correlation = List<double>.filled(maxLag + 2, 0);
+    for (var lag = minLag; lag <= maxLag; lag++) {
+      var sum = 0.0;
+      for (var i = 0; i < n - lag; i++) {
+        sum += samples[i] * samples[i + lag];
       }
+
+      final leadingEnergy = energyPrefix[n - lag];
+      final trailingEnergy = energyPrefix[n] - energyPrefix[lag];
+      final denominator = math.sqrt(leadingEnergy * trailingEnergy);
+      correlation[lag] = denominator > 0 ? sum / denominator : 0;
     }
 
-    // No peak found
-    return 0;
+    return correlation;
   }
 
-  // Helper functions for mathematical operations
-  static const double _pi = 3.141592653589793;
+  /// Refines an integer peak [lag] to sub-sample accuracy by fitting a parabola
+  /// through the peak and its two neighbours.
+  static double _interpolatePeak(
+    List<double> correlation,
+    int lag,
+    int minLag,
+    int maxLag,
+  ) {
+    if (lag <= minLag || lag >= maxLag) {
+      return lag.toDouble();
+    }
 
-  static double _cos(double x) {
-    // Simple cosine approximation using Taylor series
-    // cos(x) = 1 - x²/2! + x⁴/4! - x⁶/6! + ...
-    x = _normalizeAngle(x);
-    double result = 1.0;
-    double term = 1.0;
-    for (int i = 1; i <= 10; i++) {
-      term *= -x * x / ((2 * i - 1) * (2 * i));
-      result += term;
-    }
-    return result;
-  }
+    final previous = correlation[lag - 1];
+    final peak = correlation[lag];
+    final next = correlation[lag + 1];
 
-  static double _normalizeAngle(double x) {
-    // Normalize angle to [-pi, pi]
-    while (x > _pi) {
-      x -= 2 * _pi;
+    final denominator = previous - 2 * peak + next;
+    if (denominator == 0) {
+      return lag.toDouble();
     }
-    while (x < -_pi) {
-      x += 2 * _pi;
+
+    final delta = 0.5 * (previous - next) / denominator;
+    if (delta.abs() > 1) {
+      return lag.toDouble();
     }
-    return x;
+
+    return lag + delta;
   }
 }
