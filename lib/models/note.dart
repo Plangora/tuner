@@ -39,6 +39,15 @@ class Note {
 /// Static class containing predefined notes in equal temperament tuning (A4 = 440 Hz).
 class NoteTable {
   static const List<Note> notes = [
+    // Octave 2 starts at E2, the lowest string on a standard-tuned guitar.
+    Note(name: 'E', octave: 2, frequency: 82.41),
+    Note(name: 'F', octave: 2, frequency: 87.31),
+    Note(name: 'F♯', octave: 2, frequency: 92.50),
+    Note(name: 'G', octave: 2, frequency: 98.00),
+    Note(name: 'G♯', octave: 2, frequency: 103.83),
+    Note(name: 'A', octave: 2, frequency: 110.00),
+    Note(name: 'A♯', octave: 2, frequency: 116.54),
+    Note(name: 'B', octave: 2, frequency: 123.47),
     Note(name: 'C', octave: 3, frequency: 130.81),
     Note(name: 'C♯', octave: 3, frequency: 138.59),
     Note(name: 'D', octave: 3, frequency: 146.83),
