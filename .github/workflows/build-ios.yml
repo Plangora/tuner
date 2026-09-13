@@ -89,8 +89,19 @@ jobs:
           # Unlock the Keychain so it can be used during the build
           security unlock-keychain -p "${{ secrets.P12_PASSWORD }}" "$KEYCHAIN_PATH"
 
+          # Disable the keychain's auto-relock timeout. By default a keychain
+          # relocks after a few minutes of inactivity; if that happens mid-build,
+          # codesign blocks forever waiting for a GUI unlock prompt that can
+          # never appear in headless CI, hanging the job indefinitely.
+          security set-keychain-settings "$KEYCHAIN_PATH"
+
           # Set the Keychain as default for code signing operations
           security default-keychain -s "$KEYCHAIN_PATH"
+
+          # Ensure the keychain is actually on the search list codesign/xcodebuild
+          # consult when locating identities (being the default keychain doesn't
+          # always guarantee this on the macOS runner image).
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain
 
           # Import the certificate into the Keychain
           # Note: P12_FILE must be exported with `openssl pkcs12 -export -legacy`
@@ -102,6 +113,14 @@ jobs:
             -k "$KEYCHAIN_PATH" \
             -P "${{ secrets.P12_PASSWORD }}" \
             -A  # Allow codesigning without prompting
+
+          # -A above allows all apps to use the imported key, but on modern
+          # macOS the ACL "partition list" is a separate gate that command-line
+          # tools (codesign, xcodebuild) are checked against independently.
+          # Without this, signing can hang waiting for a keychain-access
+          # prompt that never appears headlessly, instead of erroring cleanly.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "${{ secrets.P12_PASSWORD }}" "$KEYCHAIN_PATH"
 
           # Clean up the temporary certificate file (no longer needed)
           rm $HOME/certificates/distribution.p12
