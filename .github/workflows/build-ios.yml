@@ -148,16 +148,16 @@ jobs:
           cd ios
 
           # Build the archive (signed with distribution certificate)
-          # CODE_SIGN_STYLE=Automatic in the project has no DEVELOPMENT_TEAM
-          # set, and CI has no interactive Apple ID session to resolve one,
-          # so DEVELOPMENT_TEAM is supplied here. It stays Automatic (not
-          # forced to Manual): the workspace also builds Swift Package
-          # Manager plugin targets (record_ios, audio_session, ...), which
-          # are libraries/frameworks that reject an explicit provisioning
-          # profile outright ("does not support provisioning profiles").
-          # With the matching certificate and profile already installed in
-          # the Keychain / Provisioning Profiles folder above, Automatic
-          # signing resolves Runner locally without needing network access.
+          # Manual signing (team/identity/profile) is set in
+          # ios/Flutter/Release.xcconfig, scoped to the Runner target only.
+          # It cannot be passed as command-line overrides here: those apply
+          # globally to every target in the workspace, including the Swift
+          # Package Manager plugin targets (record_ios, audio_session, ...),
+          # which are libraries/frameworks that reject an explicit
+          # provisioning profile outright. Automatic signing was also tried
+          # and rejected: it insists on managing its own profile via the
+          # network ("pass -allowProvisioningUpdates") rather than using the
+          # named distribution profile already installed above.
           xcodebuild \
             -workspace Runner.xcworkspace \
             -scheme Runner \
@@ -165,7 +165,6 @@ jobs:
             -archivePath build/Runner.xcarchive \
             -derivedDataPath build \
             -verbose \
-            DEVELOPMENT_TEAM=588QQUR9UG \
             archive
 
           # Export the archive as a distributable .ipa file

@@ -1,1 +1,14 @@
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "Generated.xcconfig"
+
+// App Store distribution signing for CI (see .github/workflows/build-ios.yml).
+// Scoped to this file (Runner's Release config only) rather than passed as
+// global xcodebuild command-line overrides: the workspace also builds Swift
+// Package Manager plugin targets (record_ios, audio_session, ...), and a
+// global CODE_SIGN_STYLE/PROVISIONING_PROFILE_SPECIFIER override breaks them
+// with "does not support provisioning profiles" since they're
+// libraries/frameworks, not app targets.
+DEVELOPMENT_TEAM = 588QQUR9UG
+CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = Apple Distribution
+PROVISIONING_PROFILE_SPECIFIER = Tuner_AppStore
