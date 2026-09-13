@@ -6,17 +6,24 @@
 # SETUP REQUIRED:
 # 1. Follow docs/ios-signing-setup.md to create certificates and provisioning profiles
 # 2. Add these GitHub Secrets (repo Settings → Secrets → Actions):
-#    - P12_FILE: Base64-encoded Apple Distribution certificate (.p12 file)
+#    - P12_FILE: Base64-encoded Apple Distribution certificate (.p12 file,
+#      exported with `openssl pkcs12 -export -legacy` -- see the signing
+#      certificate step below for why)
 #    - P12_PASSWORD: Password for the .p12 certificate
 #    - PROVISIONING_PROFILE: Base64-encoded App Store provisioning profile
-#    - APP_STORE_CONNECT_API_KEY: (Optional) For automated App Store submission
+#    - APP_STORE_CONNECT_API_KEY_ID: Key ID from App Store Connect ->
+#      Users and Access -> Integrations -> App Store Connect API
+#    - APP_STORE_CONNECT_API_ISSUER_ID: Issuer ID from the same page
+#    - APP_STORE_CONNECT_API_KEY_CONTENT: Base64-encoded contents of the
+#      downloaded AuthKey_<KEY_ID>.p8 file (Apple only allows downloading
+#      this file once, immediately after generating the key)
 #
 # TRIGGERS:
 # - Manual dispatch (workflow_dispatch) to build on demand
 # - Tag push (v*.*.*) to automatically build tagged releases
 #
 # OUTPUTS:
-# - Signed .ipa file ready for App Store submission
+# - Signed .ipa uploaded to TestFlight (and downloadable as a build artifact)
 # - Build logs and artifacts saved for debugging
 
 name: Build iOS App
@@ -205,18 +212,28 @@ jobs:
           path: ios/build/Export/*.ipa
           retention-days: 30  # Keep artifacts for 30 days
 
-      # Step 10: (Optional) Submit to TestFlight
-      # Uncomment this section to automatically upload to TestFlight for internal testing
-      # Requires App Store Connect API key configured in GitHub Secrets
-      # - name: Upload to TestFlight
-      #   if: success()
-      #   run: |
-      #     xcrun altool \
-      #       --upload-app \
-      #       --file ios/build/Export/Runner.ipa \
-      #       --username "${{ secrets.APPLE_ID }}" \
-      #       --password "${{ secrets.APPLE_ID_PASSWORD }}" \
-      #       --verbose
+      # Step 10: Submit to TestFlight
+      # Uses an App Store Connect API key (not an Apple ID/password) so this
+      # runs headlessly with no 2FA prompt. Requires three GitHub Secrets:
+      # APP_STORE_CONNECT_API_KEY_ID, APP_STORE_CONNECT_API_ISSUER_ID, and
+      # APP_STORE_CONNECT_API_KEY_CONTENT (base64-encoded .p8 file content).
+      # See docs/ios-signing-setup.md for how to generate the key.
+      - name: Upload to TestFlight
+        if: success()
+        run: |
+          # altool looks for the key file by naming convention in this
+          # directory -- it isn't passed as a path argument.
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}" | base64 --decode > \
+            ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+
+          xcrun altool \
+            --upload-app \
+            --type ios \
+            --file ios/build/Export/Runner.ipa \
+            --apiKey "${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}" \
+            --apiIssuer "${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}" \
+            --verbose
 
       # Step 11: Log the build result
       - name: Build complete
