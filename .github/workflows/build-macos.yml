@@ -1,0 +1,85 @@
+# GitHub Actions Workflow: Build macOS Desktop App
+#
+# Builds a universal macOS application (Intel + Apple Silicon)
+# Can be distributed via GitHub Releases or macOS App Store
+#
+# SETUP: No additional secrets required - uses Xcode signing
+#
+# TRIGGERS:
+# - Manual dispatch from Actions tab
+# - Tag push (v*.*.*)
+
+name: Build macOS App
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build:
+    name: Build macOS Release
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+
+      - name: Get dependencies
+        run: |
+          flutter pub get
+          flutter analyze
+
+      # Build universal macOS app (Intel + Apple Silicon)
+      - name: Build macOS app
+        run: |
+          flutter build macos \
+            --release \
+            --verbose
+
+      # Create a DMG (disk image) for distribution
+      # Users can mount and drag the app to Applications folder
+      - name: Create DMG installer
+        run: |
+          cd build/macos/Build/Products/Release
+
+          # Create DMG from the app bundle
+          hdiutil create -volname "Tuner" \
+            -srcfolder . \
+            -ov -format UDZO \
+            ~/tuner.dmg
+
+          # Move to artifacts directory
+          mkdir -p $GITHUB_WORKSPACE/dmg_build
+          cp ~/tuner.dmg $GITHUB_WORKSPACE/dmg_build/tuner-macos.dmg
+
+      # Upload the app bundle and DMG
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-build
+          path: |
+            build/macos/Build/Products/Release/tuner.app
+            dmg_build/tuner-macos.dmg
+          retention-days: 30
+
+      # (Optional) Create a GitHub Release and upload DMG
+      # Uncomment to automatically create releases for tagged versions
+      # - name: Create GitHub Release
+      #   if: startsWith(github.ref, 'refs/tags/')
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     files: dmg_build/tuner-macos.dmg
+      #     body: "Tuner macOS build ${{ github.ref }}"
+
+      - name: Build complete
+        run: |
+          echo "✅ macOS build successful!"
+          echo "📦 App bundle and DMG ready in artifacts"
+          echo "💿 Users can download and run on macOS 10.15+"

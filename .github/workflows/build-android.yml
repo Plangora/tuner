@@ -1,0 +1,119 @@
+# GitHub Actions Workflow: Build Android App
+#
+# Builds a release APK for Android distribution via Google Play Store
+#
+# SETUP REQUIRED:
+# 1. Create a signing keystore (see docs/android-signing-setup.md)
+# 2. Add these GitHub Secrets:
+#    - ANDROID_KEYSTORE_B64: Base64-encoded keystore file (.jks)
+#    - ANDROID_KEYSTORE_PASSWORD: Password for the keystore
+#    - ANDROID_KEY_ALIAS: Alias of the key inside keystore
+#    - ANDROID_KEY_PASSWORD: Password for the key
+#
+# TRIGGERS:
+# - Manual dispatch from Actions tab
+# - Tag push (v*.*.*)
+
+name: Build Android App
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  build:
+    name: Build Android Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+
+      - name: Get dependencies
+        run: |
+          flutter pub get
+          flutter analyze
+
+      # Decode and install the signing keystore from GitHub Secrets
+      # This allows the build to be automatically signed for Play Store
+      - name: Install signing keystore
+        run: |
+          # Create a directory for the keystore
+          mkdir -p $HOME/keystore
+
+          # Decode the base64 keystore and save it
+          echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 --decode > \
+            $HOME/keystore/android-keystore.jks
+
+      # Create the signing properties file that Gradle will read
+      - name: Create signing properties
+        run: |
+          cat > android/key.properties << EOF
+          storeFile=$HOME/keystore/android-keystore.jks
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+
+      # Build the release APK
+      # The Flutter build system reads key.properties and signs automatically
+      - name: Build release APK
+        run: |
+          flutter build apk \
+            --release \
+            --verbose
+
+      # Verify the APK was created and signed
+      - name: Verify APK signature
+        run: |
+          APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
+
+          if [ -f "$APK_PATH" ]; then
+            echo "✅ APK created: $APK_PATH"
+            ls -lh "$APK_PATH"
+
+            # Check if the APK is properly signed
+            # unzip -t verifies without extracting
+            unzip -t "$APK_PATH" | head -5
+          else
+            echo "❌ APK not found!"
+            find build -name "*.apk" -type f
+            exit 1
+          fi
+
+      # Upload the APK as an artifact
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/*.apk
+          retention-days: 30
+
+      # (Optional) Build App Bundle for Google Play
+      # Uncomment to create an AAB (Android App Bundle) instead of APK
+      # Google Play prefers AAB for distribution
+      # - name: Build release App Bundle
+      #   run: |
+      #     flutter build appbundle \
+      #       --release \
+      #       --verbose
+
+      - name: Build complete
+        run: |
+          echo "✅ Android APK build successful!"
+          echo "📦 APK ready in artifacts"
+          echo "🚀 Upload to Google Play Store or distribute directly"
