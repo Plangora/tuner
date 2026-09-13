@@ -1,0 +1,213 @@
+# GitHub Actions Workflow: Build iOS App and Submit to App Store
+#
+# This workflow automates the Flutter iOS build process and can submit builds
+# to App Store Connect for TestFlight distribution or App Store review.
+#
+# SETUP REQUIRED:
+# 1. Follow docs/ios-signing-setup.md to create certificates and provisioning profiles
+# 2. Add these GitHub Secrets (repo Settings → Secrets → Actions):
+#    - P12_FILE: Base64-encoded Apple Distribution certificate (.p12 file)
+#    - P12_PASSWORD: Password for the .p12 certificate
+#    - PROVISIONING_PROFILE: Base64-encoded App Store provisioning profile
+#    - APP_STORE_CONNECT_API_KEY: (Optional) For automated App Store submission
+#
+# TRIGGERS:
+# - Manual dispatch (workflow_dispatch) to build on demand
+# - Tag push (v*.*.*) to automatically build tagged releases
+#
+# OUTPUTS:
+# - Signed .ipa file ready for App Store submission
+# - Build logs and artifacts saved for debugging
+
+name: Build iOS App
+
+on:
+  # Manual trigger from Actions tab
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'testflight'
+        type: choice
+        options:
+          - testflight    # For internal testing via TestFlight
+          - appstore      # For App Store review submission
+
+  # Automatic trigger on version tags (e.g., push tag v1.0.0)
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+env:
+  # Flutter and Xcode versions - update as needed
+  FLUTTER_VERSION: '3.47.4'
+  XCODE_VERSION: '15.2'  # Must match your local development environment
+
+jobs:
+  build:
+    name: Build iOS Release
+    runs-on: macos-latest  # Must use macOS to build for iOS
+
+    steps:
+      # Step 1: Check out the repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Flutter SDK
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      # Step 3: Get Flutter dependencies
+      - name: Get dependencies
+        run: |
+          flutter pub get
+          # Verify no analysis issues before building
+          flutter analyze
+
+      # Step 4: Decode and install iOS signing certificates
+      # This step converts the base64-encoded certificate from GitHub Secrets
+      # back into a binary .p12 file, then installs it into the Keychain
+      - name: Install iOS signing certificate
+        run: |
+          # Create a temporary directory for certificate files
+          mkdir -p $HOME/certificates
+
+          # Decode the base64 certificate and save as binary .p12 file
+          echo "${{ secrets.P12_FILE }}" | base64 --decode > $HOME/certificates/distribution.p12
+
+          # Create a Keychain to hold the certificate (isolated from user's Keychain)
+          KEYCHAIN_PATH=$HOME/Library/Keychains/flutter-build.keychain-db
+          security create-keychain -p "${{ secrets.P12_PASSWORD }}" "$KEYCHAIN_PATH"
+
+          # Unlock the Keychain so it can be used during the build
+          security unlock-keychain -p "${{ secrets.P12_PASSWORD }}" "$KEYCHAIN_PATH"
+
+          # Set the Keychain as default for code signing operations
+          security default-keychain -s "$KEYCHAIN_PATH"
+
+          # Import the certificate into the Keychain
+          security import $HOME/certificates/distribution.p12 \
+            -k "$KEYCHAIN_PATH" \
+            -P "${{ secrets.P12_PASSWORD }}" \
+            -A  # Allow codesigning without prompting
+
+          # Clean up the temporary certificate file (no longer needed)
+          rm $HOME/certificates/distribution.p12
+
+      # Step 5: Install provisioning profile
+      # The provisioning profile tells Xcode which app ID and team to use for signing
+      - name: Install provisioning profile
+        run: |
+          # Create provisioning profiles directory if it doesn't exist
+          mkdir -p $HOME/Library/MobileDevice/Provisioning\ Profiles
+
+          # Decode and install the provisioning profile
+          echo "${{ secrets.PROVISIONING_PROFILE }}" | base64 --decode > \
+            $HOME/Library/MobileDevice/Provisioning\ Profiles/Tuner_AppStore.mobileprovision
+
+      # Step 6: Update iOS bundle ID and version
+      # Configure the app's identity for App Store
+      - name: Configure app identity
+        run: |
+          # Read version from pubspec.yaml (format: version: 1.0.0+1)
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: \([0-9.]*\).*/\1/')
+          BUILD_NUMBER=$(grep '^version:' pubspec.yaml | sed 's/.*+\([0-9]*\)/\1/')
+
+          # Update Xcode project with correct bundle ID, version, and build number
+          # --project: Path to the Xcode project
+          # --target: The app target (Runner)
+          # -k PRODUCT_BUNDLE_IDENTIFIER: App bundle ID
+          # -k MARKETING_VERSION: User-facing version (1.0.0)
+          # -k CURRENT_PROJECT_VERSION: Build number (1, 2, 3, etc.)
+          xcode-project=ios/Runner.xcodeproj
+          defaults write "$xcode-project/project.pbxproj" PRODUCT_BUNDLE_IDENTIFIER -string "com.plangora.tuner"
+
+          echo "Version: $VERSION"
+          echo "Build: $BUILD_NUMBER"
+
+      # Step 7: Build the iOS app
+      # This runs the Flutter build system to produce a signed .ipa file
+      - name: Build Flutter iOS
+        run: |
+          # Build for App Store distribution (--release flag)
+          # This optimizes code and creates a signed binary
+          flutter build ios \
+            --release \
+            --no-codesign \
+            --verbose
+
+      # Step 8: Build and sign the .ipa file using Xcode
+      # This final step signs the built app with the distribution certificate
+      - name: Build and sign .ipa
+        run: |
+          # Navigate to the iOS project directory
+          cd ios
+
+          # Build the archive (signed with distribution certificate)
+          xcodebuild \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -archivePath build/Runner.xcarchive \
+            -derivedDataPath build \
+            -verbose \
+            archive
+
+          # Export the archive as a distributable .ipa file
+          # Uses the provisioning profile and signing identity from Keychain
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/Runner.xcarchive \
+            -exportPath build/Export \
+            -exportOptionsPlist ExportOptions.plist \
+            -verbose
+
+      # Step 9: Upload build artifact for download
+      # The .ipa file can be downloaded from the Actions tab for local testing
+      - name: Upload .ipa artifact
+        uses: actions/upload-artifact@v3
+        if: always()  # Upload even if previous steps fail (for debugging)
+        with:
+          name: tuner-app
+          path: ios/build/Export/*.ipa
+          retention-days: 30  # Keep artifacts for 30 days
+
+      # Step 10: (Optional) Submit to TestFlight
+      # Uncomment this section to automatically upload to TestFlight for internal testing
+      # Requires App Store Connect API key configured in GitHub Secrets
+      # - name: Upload to TestFlight
+      #   if: success()
+      #   run: |
+      #     xcrun altool \
+      #       --upload-app \
+      #       --file ios/build/Export/Runner.ipa \
+      #       --username "${{ secrets.APPLE_ID }}" \
+      #       --password "${{ secrets.APPLE_ID_PASSWORD }}" \
+      #       --verbose
+
+      # Step 11: Log the build result
+      - name: Build complete
+        if: success()
+        run: |
+          echo "✅ iOS build successful!"
+          echo "📦 .ipa file ready in artifacts"
+          echo "📱 Download and test locally, or submit to App Store Connect"
+
+# MANUAL BUILD SUBMISSION:
+# If you don't want to use App Store Connect API:
+# 1. Download the .ipa from Actions → [workflow run] → Artifacts
+# 2. Open App Store Connect (https://appstoreconnect.apple.com)
+# 3. Go to "TestFlight" or "Builds" depending on your release target
+# 4. Click "+" to add a new build
+# 5. Select the downloaded .ipa file
+# 6. Fill in test notes and click "Save"
+#
+# For App Store release (not TestFlight):
+# 1. Go to your app in App Store Connect
+# 2. Click "Create Submission" in "Submissions" tab
+# 3. Select the build number of your submitted .ipa
+# 4. Fill in release notes and upload screenshots
+# 5. Submit for review

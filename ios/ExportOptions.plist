@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Signing method: app-store for App Store distribution -->
+	<!-- Alternative: ad-hoc, enterprise, development -->
+	<key>signingStyle</key>
+	<string>automatic</string>
+
+	<!-- Team ID: Your Apple Developer Team ID -->
+	<!-- Find at: https://developer.apple.com/account/#!/membership -->
+	<key>teamID</key>
+	<string>YOUR_TEAM_ID</string>
+
+	<!-- Method: app-store for App Store submission -->
+	<key>method</key>
+	<string>app-store</string>
+
+	<!-- Provisioning profile mapping -->
+	<!-- Maps bundle ID to provisioning profile UUID -->
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.plangora.tuner</key>
+		<string>Tuner_AppStore</string>
+	</dict>
+
+	<!-- Code signing identity: matches the certificate name in Keychain -->
+	<key>signingCertificate</key>
+	<string>Apple Distribution</string>
+
+	<!-- Strip Swift symbols for faster distribution -->
+	<key>stripSwiftSymbols</key>
+	<true/>
+
+	<!-- Manage signing automatically (Xcode handles certificate selection) -->
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+
+	<!-- Enable bitcode for smaller download sizes (optional) -->
+	<key>uploadBitcode</key>
+	<false/>
+
+	<!-- Symbol upload for crash reporting (recommended for App Store apps) -->
+	<key>uploadSymbols</key>
+	<true/>
+</dict>
+</plist>
