@@ -227,10 +227,16 @@ jobs:
           echo "${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}" | base64 --decode > \
             ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
 
+          # The exported .ipa is named after CFBundleDisplayName ("Tuner"),
+          # not the Xcode scheme ("Runner") -- resolve it by glob instead of
+          # hardcoding a name that can silently drift out of sync.
+          IPA_PATH=$(ls ios/build/Export/*.ipa)
+          echo "Uploading: $IPA_PATH"
+
           xcrun altool \
             --upload-app \
             --type ios \
-            --file ios/build/Export/Runner.ipa \
+            --file "$IPA_PATH" \
             --apiKey "${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}" \
             --apiIssuer "${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}" \
             --verbose
