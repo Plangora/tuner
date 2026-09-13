@@ -1,30 +1,129 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tuner/models/note.dart';
+import 'package:tuner/widgets/note_display.dart';
+import 'package:tuner/widgets/tuner_gauge.dart';
+import 'package:tuner/widgets/tuning_status.dart';
 
-import 'package:tuner/main.dart';
+Widget wrap(Widget child) {
+  return MaterialApp(home: Scaffold(body: child));
+}
+
+/// Canvas stand-in that records the lines a painter draws.
+class RecordingCanvas implements ui.Canvas {
+  final List<(Offset, Offset)> lines = [];
+
+  @override
+  void drawLine(Offset p1, Offset p2, ui.Paint paint) {
+    lines.add((p1, p2));
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+/// Paints the gauge and returns the needle line (the longest line drawn from
+/// the gauge's pivot point).
+(Offset, Offset) needleFor(double centsOffset) {
+  const size = Size(300, 150);
+  final pivot = Offset(size.width / 2, size.height * 0.8);
+  final canvas = RecordingCanvas();
+
+  GaugePainter(centsOffset: centsOffset, isInTune: false).paint(canvas, size);
+
+  final needles = canvas.lines.where((line) => line.$1 == pivot).toList();
+  expect(needles, hasLength(1));
+  return needles.first;
+}
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('NoteDisplay', () {
+    testWidgets('shows placeholders when no note is detected', (tester) async {
+      await tester.pumpWidget(
+        wrap(const NoteDisplay(currentNote: null, detectedFrequency: 0)),
+      );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+      expect(find.text('--'), findsNWidgets(2));
+      expect(find.text('0.0 Hz'), findsOneWidget);
+    });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    testWidgets('shows the note name and both frequencies', (tester) async {
+      await tester.pumpWidget(
+        wrap(
+          const NoteDisplay(
+            currentNote: Note(name: 'A', octave: 4, frequency: 440.00),
+            detectedFrequency: 441.2,
+          ),
+        ),
+      );
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+      expect(find.text('A4'), findsOneWidget);
+      expect(find.text('441.2 Hz'), findsOneWidget);
+      expect(find.text('440.00 Hz'), findsOneWidget);
+    });
+  });
+
+  group('TuningStatus', () {
+    testWidgets('reports In Tune, Flat and Sharp', (tester) async {
+      await tester.pumpWidget(
+        wrap(const TuningStatus(centsOffset: 1, isInTune: true)),
+      );
+      expect(find.text('In Tune'), findsOneWidget);
+
+      await tester.pumpWidget(
+        wrap(const TuningStatus(centsOffset: -20, isInTune: false)),
+      );
+      expect(find.text('Flat'), findsOneWidget);
+
+      await tester.pumpWidget(
+        wrap(const TuningStatus(centsOffset: 20, isInTune: false)),
+      );
+      expect(find.text('Sharp'), findsOneWidget);
+    });
+  });
+
+  group('TunerGauge', () {
+    testWidgets('renders without overflowing', (tester) async {
+      await tester.pumpWidget(
+        wrap(const TunerGauge(centsOffset: 0, isInTune: true)),
+      );
+
+      expect(find.byType(CustomPaint), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+
+    test('needle points straight up when in tune', () {
+      final (start, end) = needleFor(0);
+
+      expect(end.dx, closeTo(start.dx, 0.001));
+      expect(end.dy, lessThan(start.dy));
+    });
+
+    test('needle leans left when flat and right when sharp', () {
+      final (start, flatEnd) = needleFor(-100);
+      final (_, sharpEnd) = needleFor(100);
+
+      expect(flatEnd.dx, lessThan(start.dx));
+      expect(sharpEnd.dx, greaterThan(start.dx));
+
+      // ±100 cents are the horizontal extremes of the arc.
+      expect(flatEnd.dy, closeTo(start.dy, 0.001));
+      expect(sharpEnd.dy, closeTo(start.dy, 0.001));
+    });
+
+    testWidgets('repaints when the offset changes', (tester) async {
+      final painter = GaugePainter(centsOffset: 0, isInTune: true);
+
+      expect(
+        painter.shouldRepaint(GaugePainter(centsOffset: 0, isInTune: true)),
+        isFalse,
+      );
+      expect(
+        painter.shouldRepaint(GaugePainter(centsOffset: 30, isInTune: false)),
+        isTrue,
+      );
+    });
   });
 }
