@@ -150,8 +150,14 @@ jobs:
           # Build the archive (signed with distribution certificate)
           # CODE_SIGN_STYLE=Automatic in the project has no DEVELOPMENT_TEAM
           # set, and CI has no interactive Apple ID session to resolve one,
-          # so signing is forced to Manual here with the exact team,
-          # identity, and provisioning profile we installed above.
+          # so DEVELOPMENT_TEAM is supplied here. It stays Automatic (not
+          # forced to Manual): the workspace also builds Swift Package
+          # Manager plugin targets (record_ios, audio_session, ...), which
+          # are libraries/frameworks that reject an explicit provisioning
+          # profile outright ("does not support provisioning profiles").
+          # With the matching certificate and profile already installed in
+          # the Keychain / Provisioning Profiles folder above, Automatic
+          # signing resolves Runner locally without needing network access.
           xcodebuild \
             -workspace Runner.xcworkspace \
             -scheme Runner \
@@ -159,10 +165,7 @@ jobs:
             -archivePath build/Runner.xcarchive \
             -derivedDataPath build \
             -verbose \
-            CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM=588QQUR9UG \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER=Tuner_AppStore \
             archive
 
           # Export the archive as a distributable .ipa file
