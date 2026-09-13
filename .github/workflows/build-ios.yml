@@ -93,10 +93,14 @@ jobs:
           security default-keychain -s "$KEYCHAIN_PATH"
 
           # Import the certificate into the Keychain
-          # Note: .p12 file has no password, so -P is empty string
+          # Note: P12_FILE must be exported with `openssl pkcs12 -export -legacy`
+          # Modern OpenSSL 3.x defaults to AES-256/SHA-256 encryption for .p12 files,
+          # but macOS's security/Keychain import only understands the legacy RC2/3DES
+          # cipher suite. Without -legacy, import fails with "MAC verification failed"
+          # even when the password is correct.
           security import $HOME/certificates/distribution.p12 \
             -k "$KEYCHAIN_PATH" \
-            -P "" \
+            -P "${{ secrets.P12_PASSWORD }}" \
             -A  # Allow codesigning without prompting
 
           # Clean up the temporary certificate file (no longer needed)
