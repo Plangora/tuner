@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:audio_session/audio_session.dart';
@@ -15,8 +16,12 @@ class AudioService {
 
   late AudioRecorder _audioRecorder;
   Stream<Uint8List>? _audioStream;
+  StreamSubscription<Uint8List>? _audioSubscription;
   bool _isRecording = false;
   PitchCallback? _onPitchDetected;
+
+  /// Called when the audio stream reports an error.
+  void Function(Object error)? onStreamError;
 
   /// Initializes the audio service with proper audio session configuration
   ///
@@ -65,8 +70,16 @@ class AudioService {
       ),
     );
 
-    // Listen to stream
-    _audioStream?.listen(_processAudioBuffer);
+    // Listen to stream, keeping the subscription so it can be cancelled.
+    await _audioSubscription?.cancel();
+    _audioSubscription = _audioStream?.listen(
+      _processAudioBuffer,
+      onError: (Object error) {
+        _isRecording = false;
+        onStreamError?.call(error);
+      },
+      cancelOnError: true,
+    );
   }
 
   /// Processes incoming audio buffer and detects pitch
@@ -114,6 +127,8 @@ class AudioService {
   /// Stops audio recording
   Future<void> stopRecording() async {
     _isRecording = false;
+    await _audioSubscription?.cancel();
+    _audioSubscription = null;
     await _audioRecorder.stop();
     _audioStream = null;
   }
@@ -123,6 +138,8 @@ class AudioService {
     if (_isRecording) {
       await stopRecording();
     }
+    await _audioSubscription?.cancel();
+    _audioSubscription = null;
     await _audioRecorder.dispose();
   }
 }
