@@ -67,6 +67,10 @@ jobs:
           # Verify no analysis issues before building
           flutter analyze
 
+      # Step 3b: Run tests
+      - name: Run tests
+        run: flutter test
+
       # Step 4: Decode and install iOS signing certificates
       # This step converts the base64-encoded certificate from GitHub Secrets
       # back into a binary .p12 file, then installs it into the Keychain
