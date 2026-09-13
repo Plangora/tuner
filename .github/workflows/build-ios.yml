@@ -172,7 +172,7 @@ jobs:
       # Step 9: Upload build artifact for download
       # The .ipa file can be downloaded from the Actions tab for local testing
       - name: Upload .ipa artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()  # Upload even if previous steps fail (for debugging)
         with:
           name: tuner-app
