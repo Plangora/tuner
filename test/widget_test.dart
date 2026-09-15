@@ -45,11 +45,11 @@ void main() {
         wrap(const NoteDisplay(currentNote: null, detectedFrequency: 0)),
       );
 
-      expect(find.text('--'), findsNWidgets(2));
+      expect(find.text('--'), findsOneWidget);
       expect(find.text('0.0 Hz'), findsOneWidget);
     });
 
-    testWidgets('shows the note name and both frequencies', (tester) async {
+    testWidgets('shows the note name and detected frequency', (tester) async {
       await tester.pumpWidget(
         wrap(
           const NoteDisplay(
@@ -61,7 +61,6 @@ void main() {
 
       expect(find.text('A4'), findsOneWidget);
       expect(find.text('441.2 Hz'), findsOneWidget);
-      expect(find.text('440.00 Hz'), findsOneWidget);
     });
   });
 

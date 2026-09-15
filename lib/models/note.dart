@@ -74,22 +74,22 @@ class NoteTable {
     Note(name: 'B', octave: 4, frequency: 493.88),
   ];
 
-  /// Finds the closest note to the given frequency.
-  /// Returns null if frequency <= 0 or the notes list is empty.
+  static const List<String> _chromaticNames = [
+    'C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B',
+  ];
+
+  /// Finds the closest note to the given frequency using equal temperament
+  /// (A4 = 440 Hz), computed directly rather than limited to a fixed table
+  /// so it works for any frequency, not just the guitar range above.
+  /// Returns null if frequency <= 0.
   static Note? findClosestNote(double frequency) {
-    if (frequency <= 0 || notes.isEmpty) return null;
+    if (frequency <= 0) return null;
 
-    Note closestNote = notes[0];
-    double minDifference = (notes[0].frequency - frequency).abs();
+    final midi = (69 + 12 * log(frequency / 440) / ln2).round();
+    final name = _chromaticNames[((midi % 12) + 12) % 12];
+    final octave = (midi / 12).floor() - 1;
+    final targetFrequency = 440 * pow(2, (midi - 69) / 12);
 
-    for (final note in notes) {
-      final difference = (note.frequency - frequency).abs();
-      if (difference < minDifference) {
-        minDifference = difference;
-        closestNote = note;
-      }
-    }
-
-    return closestNote;
+    return Note(name: name, octave: octave, frequency: targetFrequency.toDouble());
   }
 }

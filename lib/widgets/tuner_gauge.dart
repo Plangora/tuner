@@ -22,14 +22,16 @@ class TunerGauge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: CustomPaint(
-        painter: GaugePainter(
-          centsOffset: centsOffset,
-          isInTune: isInTune,
-        ),
-        size: const Size(300, 150),
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return CustomPaint(
+          painter: GaugePainter(
+            centsOffset: centsOffset,
+            isInTune: isInTune,
+          ),
+          size: Size(constraints.maxWidth, constraints.maxHeight),
+        );
+      },
     );
   }
 }

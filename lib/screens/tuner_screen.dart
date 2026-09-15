@@ -20,7 +20,6 @@ class _TunerScreenState extends State<TunerScreen> {
   Note? _currentNote;
   double _centsOffset = 0;
   bool _isInTune = false;
-  bool _isRecording = false;
   bool _hasError = false;
   String _errorMessage = '';
 
@@ -31,29 +30,11 @@ class _TunerScreenState extends State<TunerScreen> {
     _initializeAudio();
   }
 
-  /// Initializes the audio service
+  /// Initializes the audio service and starts tuning immediately.
   Future<void> _initializeAudio() async {
     try {
       await _audioService.initialize();
-    } catch (e) {
-      _showError(e.toString());
-    }
-  }
-
-  /// Toggles audio recording on/off
-  Future<void> _toggleRecording() async {
-    try {
-      if (_isRecording) {
-        await _audioService.stopRecording();
-        setState(() {
-          _isRecording = false;
-        });
-      } else {
-        await _audioService.startRecording(_onPitchDetected);
-        setState(() {
-          _isRecording = true;
-        });
-      }
+      await _audioService.startRecording(_onPitchDetected);
     } catch (e) {
       _showError(e.toString());
     }
@@ -135,36 +116,34 @@ class _TunerScreenState extends State<TunerScreen> {
     );
   }
 
-  /// Builds main tuner view with gauge and controls
+  /// Builds main tuner view with gauge and status, sized to fill the screen.
   Widget _buildTunerView() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            NoteDisplay(
-              currentNote: _currentNote,
-              detectedFrequency: _currentFrequency,
-            ),
-            const SizedBox(height: 24),
-            TunerGauge(
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          NoteDisplay(
+            currentNote: _currentNote,
+            detectedFrequency: _currentFrequency,
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            flex: 1,
+            child: TunerGauge(
               centsOffset: _centsOffset,
               isInTune: _isInTune,
             ),
-            const SizedBox(height: 24),
-            TuningStatus(
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            // Weighted so the status label occupies roughly half the screen.
+            flex: 3,
+            child: TuningStatus(
               centsOffset: _centsOffset,
               isInTune: _isInTune,
             ),
-            const SizedBox(height: 32),
-            FloatingActionButton.extended(
-              onPressed: _toggleRecording,
-              label: Text(_isRecording ? 'Stop Tuning' : 'Start Tuning'),
-              icon: Icon(_isRecording ? Icons.stop : Icons.mic),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

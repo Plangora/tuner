@@ -16,7 +16,11 @@ class PitchDetector {
   static const double minFrequency = 70.0;
 
   /// Highest frequency the detector will report (Hz).
-  static const double maxFrequency = 1200.0;
+  ///
+  /// High enough that the true period of any note the app can display stays
+  /// within the searched lag range; otherwise the autocorrelation locks onto
+  /// the octave-below subharmonic instead of the true (shorter) period.
+  static const double maxFrequency = 5000.0;
 
   /// Minimum RMS amplitude required before a block is analysed.
   ///

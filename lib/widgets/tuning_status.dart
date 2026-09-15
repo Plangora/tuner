@@ -22,8 +22,6 @@ class TuningStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
     // Determine status text and color
     late String statusText;
     late Color statusColor;
@@ -39,18 +37,26 @@ class TuningStatus extends StatelessWidget {
       statusColor = Colors.orange;
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      decoration: BoxDecoration(
-        color: statusColor.withValues(alpha: 0.2),
-        border: Border.all(color: statusColor),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        statusText,
-        style: textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: statusColor,
+    return SizedBox.expand(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        decoration: BoxDecoration(
+          color: statusColor.withValues(alpha: 0.2),
+          border: Border.all(color: statusColor, width: 4),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        alignment: Alignment.center,
+        // Scales the text up to fill the box, whatever size the screen gives it.
+        child: FittedBox(
+          fit: BoxFit.contain,
+          child: Text(
+            statusText,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: statusColor,
+              fontSize: 40,
+            ),
+          ),
         ),
       ),
     );
