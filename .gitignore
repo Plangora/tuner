@@ -46,3 +46,19 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Signing credentials — never commit these. android/key.properties and the
+# decoded keystore/certificate are generated at build time (locally or in
+# CI) from secrets; the checked-in files here are stray local exports that
+# predate this ignore rule.
+android/key.properties
+*.p12
+*.p12.b64
+*.key
+*.csr
+*.mobileprovision
+*.jks
+provisioning_profile.b64
+
+# Local build artifacts / archives, not part of the source tree
+/build-artifacts/

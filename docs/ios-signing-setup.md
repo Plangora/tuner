@@ -118,14 +118,17 @@ Replace `YOUR_TEAM_ID` with your Apple Developer Team ID:
 1. Go to [Apple Developer - Membership](https://developer.apple.com/account/#!/membership)
 2. Look for "Team ID" (9-character code like "ABC123DEFG")
 
-## Step 8: Run the Build Workflow
+## Step 8: Run the Release Workflow
+
+Push a version tag matching `pubspec.yaml`'s `version:` (e.g. `git tag v1.1.0 && git push origin v1.1.0`), or:
 
 1. Go to [GitHub Actions](https://github.com/Plangora/tuner/actions)
-2. Select **Build iOS App** workflow
-3. Click **Run workflow** → select build type (testflight or appstore)
-4. The build will run and produce a signed `.ipa` file
+2. Select the **Release** workflow
+3. Click **Run workflow**
 
-The `.ipa` file will be available in the workflow artifacts (downloadable after the build completes).
+The `release-ios` job will run and produce a signed `.ipa` file, then upload it to TestFlight automatically.
+
+The `.ipa` file will also be available in the workflow artifacts (downloadable after the build completes).
 
 ## Step 9: Submit to App Store Connect
 
@@ -140,13 +143,12 @@ The `.ipa` file will be available in the workflow artifacts (downloadable after 
 7. Add test notes or release notes
 8. Click **Submit for Review** (or **Start Testing** for TestFlight)
 
-### Option B: Automated Submission (Advanced)
+### Option B: Automated Submission (Default)
 
-Edit `.github/workflows/build-ios.yml` and uncomment the "Upload to TestFlight" section to automatically submit builds to TestFlight.
-
-This requires additional GitHub Secrets:
-- `APPLE_ID`: Your Apple ID email
-- `APPLE_ID_PASSWORD`: Your App-Specific Password (created in Apple ID settings)
+The `release-ios` job in `.github/workflows/release.yml` already uploads to TestFlight automatically via the App Store Connect API — no manual step needed once the secrets below are set:
+- `APP_STORE_CONNECT_API_KEY_ID`
+- `APP_STORE_CONNECT_API_ISSUER_ID`
+- `APP_STORE_CONNECT_API_KEY_CONTENT`
 
 ## Troubleshooting
 

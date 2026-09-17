@@ -19,8 +19,8 @@ This guide covers distributing the Tuner app across iOS, Android, macOS, and web
 1. Get your **Apple Developer Team ID**
 2. Follow `docs/ios-signing-setup.md` (Steps 1-6)
 3. Add GitHub Secrets (P12_FILE, P12_PASSWORD, PROVISIONING_PROFILE)
-4. Trigger "Build iOS App" workflow
-5. Upload `.ipa` to App Store Connect
+4. Push a version tag to trigger the **Release** workflow's `release-ios` job
+5. Upload `.ipa` to App Store Connect (or let the workflow do it via TestFlight)
 
 **Timeline:** 30 minutes setup + 15 minutes build + 1-3 days review
 
@@ -28,13 +28,13 @@ This guide covers distributing the Tuner app across iOS, Android, macOS, and web
 1. Create **Android signing keystore**
 2. Follow `docs/android-signing-setup.md` (Steps 1-4)
 3. Add GitHub Secrets (ANDROID_KEYSTORE_B64, passwords)
-4. Trigger "Build Android App" workflow
+4. Push a version tag to trigger the **Release** workflow's `release-android` job
 5. Upload APK to Google Play Console
 
 **Timeline:** 20 minutes setup + 10 minutes build + 24 hours review
 
 ### macOS → Direct Distribution
-1. Trigger "Build macOS App" workflow manually
+1. Push a version tag (or run the **Release** workflow manually) to trigger the `release-macos` job
 2. Download `.dmg` file from artifacts
 3. Share with users or host on GitHub Releases
 4. Users mount DMG and drag app to Applications
@@ -43,21 +43,25 @@ This guide covers distributing the Tuner app across iOS, Android, macOS, and web
 
 ## Automated Workflows
 
-All three platforms have **GitHub Actions workflows** in `.github/workflows/`:
+CI lives in two workflows under `.github/workflows/`:
+
+- **`ci.yml`** — runs `flutter analyze` and `flutter test` on every push to `master`/`main` and on pull requests. No builds.
+- **`release.yml`** — fires on a version tag push (`v1.2.0`, matching `pubspec.yaml`'s `version:`) or manual dispatch. Verifies the tag matches `pubspec.yaml`, re-runs analyze/test, then builds each platform in its own job.
 
 ### Build Triggers
 
-Each workflow can be triggered:
-- **Manually**: Actions tab → "Run workflow"
+The release workflow can be triggered:
+- **Manually**: Actions tab → "Release" → "Run workflow"
 - **Automatically**: Push a version tag (e.g., `git tag v1.1.0 && git push --tags`)
 
 ### Workflow Details
 
-| Workflow | File | Output |
-|----------|------|--------|
-| Build iOS App | `build-ios.yml` | `.ipa` file (App Store) |
-| Build Android App | `build-android.yml` | `.apk` file (Google Play or direct) |
-| Build macOS App | `build-macos.yml` | `.app` bundle + `.dmg` installer |
+| Job (in `release.yml`) | Output |
+|----------|--------|
+| `release-ios` | `.ipa` file (App Store / TestFlight) |
+| `release-android` | `.apk` file (Google Play or direct) |
+| `release-macos` | `.app` bundle + `.dmg` installer |
+| `release-web` | Static site, deployed to GitHub Pages |
 
 All outputs are available as **GitHub Actions artifacts** for 30 days.
 
@@ -148,7 +152,6 @@ No official storefront setup needed. If hosting on GitHub:
 ## Troubleshooting Build Failures
 
 ### iOS Build Fails
-- Check: Xcode version matches `.github/workflows/build-ios.yml` (currently 15.2)
 - Check: Certificate hasn't expired (valid for 1 year)
 - Check: Provisioning profile matches bundle ID
 

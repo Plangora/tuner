@@ -1,0 +1,36 @@
+name: CI
+
+# Analyze + test only. Building every platform happens in release.yml,
+# gated on a version tag — see docs/. Keeping this workflow to just the
+# fast checks means a build/signing regression is only caught when a tag
+# is pushed, not on every push/PR; that's a deliberate tradeoff for
+# faster everyday CI.
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: '3.47.4'
+
+jobs:
+  test:
+    name: Analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test

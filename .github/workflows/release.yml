@@ -1,0 +1,292 @@
+name: Release
+
+# Fires only on a tag push, and only builds if the tag matches the
+# `version:` in pubspec.yaml (see the check-tag job) — pushing an unrelated
+# tag, or forgetting to bump pubspec.yaml, fails fast instead of shipping
+# the wrong build. Tag format: `v<version>` with no build-number suffix,
+# e.g. pubspec `version: 1.0.0+2` -> tag `v1.0.0`. The build number after
+# `+` still flows into versionCode/CFBundleVersion via `flutter build` as
+# usual; it's just not part of the tag itself.
+#
+# One-time setup (Apple certs/profiles, Android keystore, App Store
+# Connect API key secrets) is required before release-ios/release-android
+# can succeed — see docs/ios-signing-setup.md and
+# docs/android-signing-setup.md. Until that's done, those jobs will fail
+# at their signing step; that's expected, not a workflow bug.
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: '3.47.4'
+
+jobs:
+  check-tag:
+    name: Verify tag matches pubspec version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: check
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PUBSPEC_VERSION=$(grep -m1 '^version:' pubspec.yaml | sed 's/^version:[[:space:]]*//' | cut -d'+' -f1)
+
+          echo "Tag version:     $TAG_VERSION"
+          echo "pubspec version: $PUBSPEC_VERSION"
+
+          if [ "$TAG_VERSION" != "$PUBSPEC_VERSION" ]; then
+            echo "::error::Tag v$TAG_VERSION does not match pubspec.yaml version $PUBSPEC_VERSION. Bump pubspec.yaml and re-tag."
+            exit 1
+          fi
+
+          echo "version=$PUBSPEC_VERSION" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: Analyze & test
+    needs: check-tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+  release-android:
+    name: Release Android
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Generates android/key.properties from secrets so
+      # android/app/build.gradle.kts's release signingConfig picks up the
+      # real keystore instead of falling back to debug signing. See
+      # docs/android-signing-setup.md for how to create the keystore and
+      # ANDROID_KEYSTORE_B64 et al.
+      - name: Install release keystore
+        run: |
+          mkdir -p "$RUNNER_TEMP/keystore"
+          echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 --decode > "$RUNNER_TEMP/keystore/release.keystore"
+          cat > android/key.properties <<EOF
+          storeFile=$RUNNER_TEMP/keystore/release.keystore
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+
+      - name: Build release APK
+        run: flutter build apk --release --verbose
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-release
+          path: build/app/outputs/flutter-apk/*.apk
+          retention-days: 30
+
+  release-ios:
+    name: Release iOS
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # See docs/ios-signing-setup.md / the shipping-flutter-apps skill's
+      # ios-signing-gotchas.md for why every one of these steps exists —
+      # in particular why the .p12 must be exported with `-legacy` and why
+      # the keychain settings below aren't optional.
+      - name: Install iOS signing certificate
+        run: |
+          mkdir -p "$RUNNER_TEMP/certs"
+          echo "${{ secrets.P12_FILE }}" | base64 --decode > "$RUNNER_TEMP/certs/distribution.p12"
+
+          KEYCHAIN_PATH="$RUNNER_TEMP/ios-release.keychain-db"
+          security create-keychain -p "${{ secrets.P12_PASSWORD }}" "$KEYCHAIN_PATH"
+          security unlock-keychain -p "${{ secrets.P12_PASSWORD }}" "$KEYCHAIN_PATH"
+          security set-keychain-settings "$KEYCHAIN_PATH"
+          security default-keychain -s "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain
+
+          security import "$RUNNER_TEMP/certs/distribution.p12" \
+            -k "$KEYCHAIN_PATH" \
+            -P "${{ secrets.P12_PASSWORD }}" \
+            -A
+
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "${{ secrets.P12_PASSWORD }}" "$KEYCHAIN_PATH"
+
+          rm "$RUNNER_TEMP/certs/distribution.p12"
+
+      - name: Install provisioning profile
+        run: |
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo "${{ secrets.PROVISIONING_PROFILE }}" | base64 --decode > \
+            "$HOME/Library/MobileDevice/Provisioning Profiles/Tuner_AppStore.mobileprovision"
+
+      - name: Build Flutter iOS
+        run: flutter build ios --release --no-codesign --verbose
+
+      # Signing settings (DEVELOPMENT_TEAM/CODE_SIGN_STYLE/CODE_SIGN_IDENTITY/
+      # PROVISIONING_PROFILE_SPECIFIER) live in ios/Flutter/Release.xcconfig,
+      # scoped to the Runner target only — not as xcodebuild command-line
+      # overrides, since a global override would apply to every target in
+      # the workspace, including Swift Package Manager plugin targets that
+      # reject an explicit provisioning profile.
+      - name: Archive and export .ipa
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -archivePath build/Runner.xcarchive \
+            -derivedDataPath build \
+            archive
+
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/Runner.xcarchive \
+            -exportPath build/Export \
+            -exportOptionsPlist ExportOptions.plist
+
+      - name: Upload .ipa artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-release
+          path: ios/build/Export/*.ipa
+          retention-days: 30
+
+      # Requires an App Store Connect app record to already exist for this
+      # bundle ID — see docs/ios-signing-setup.md.
+      - name: Upload to TestFlight
+        if: success()
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}" | base64 --decode > \
+            ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}.p8
+
+          # Xcode names the exported .ipa after CFBundleDisplayName, not the
+          # scheme name -- resolve by glob, never hardcode.
+          IPA_PATH=$(ls ios/build/Export/*.ipa)
+
+          xcrun altool \
+            --upload-app \
+            --type ios \
+            --file "$IPA_PATH" \
+            --apiKey "${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}" \
+            --apiIssuer "${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}"
+
+  release-macos:
+    name: Release macOS
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build macOS app
+        run: flutter build macos --release --verbose
+
+      # Create a DMG (disk image) for distribution. Unsigned — no macOS
+      # signing secrets are set up for this project yet, so this is a
+      # direct-download build rather than an App Store Connect upload.
+      - name: Create DMG installer
+        run: |
+          cd build/macos/Build/Products/Release
+
+          hdiutil create -volname "Tuner" \
+            -srcfolder . \
+            -ov -format UDZO \
+            "$RUNNER_TEMP/tuner.dmg"
+
+          mkdir -p "$GITHUB_WORKSPACE/dmg_build"
+          cp "$RUNNER_TEMP/tuner.dmg" "$GITHUB_WORKSPACE/dmg_build/tuner-macos.dmg"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-release
+          path: |
+            build/macos/Build/Products/Release/tuner.app
+            dmg_build/tuner-macos.dmg
+          retention-days: 30
+
+  release-web:
+    name: Release Web
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build web app
+        run: flutter build web --release --web-renderer=html --verbose
+
+      # Publishes to https://plangora.github.io/tuner/
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/web
+          cname: tuner.plangora.dev
+
+      - name: Upload web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-release
+          path: build/web/
+          retention-days: 30

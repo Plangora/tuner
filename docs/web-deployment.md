@@ -38,22 +38,20 @@ If you want full audio support on web, consider:
    - Source: Deploy from a branch
    - Branch: `gh-pages`
 
-2. The "Build Web App" workflow automatically deploys to GitHub Pages when:
-   - You push a tag (v1.0.0)
-   - You push to main branch (if uncommented in workflow)
+2. The `release-web` job in the **Release** workflow (`.github/workflows/release.yml`) automatically deploys to GitHub Pages when you push a version tag (e.g. `v1.0.0`) or run the workflow manually.
 
 3. Access at: `https://plangora.github.io/tuner/`
 
 ### Option B: Custom Domain
 
-To deploy to a custom domain (e.g., tuner.plangora.dev):
+The `release-web` job already deploys to a custom domain by default via the `cname` input on the deploy step:
+```yaml
+cname: tuner.plangora.dev
+```
 
-1. Edit `.github/workflows/build-web.yml` and uncomment:
-   ```yaml
-   cname: tuner.plangora.dev
-   ```
+To use a different domain, edit that value in `.github/workflows/release.yml`, then:
 
-2. Set up DNS for your domain:
+1. Set up DNS for your domain:
    ```
    CNAME record: tuner.plangora.dev → plangora.github.io
    ```

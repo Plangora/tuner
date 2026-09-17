@@ -99,12 +99,15 @@ The alias is `tuner-key` (or whatever you set in Step 1).
 2. **Never** commit it to the repository
 3. If you lose it, you **cannot update your app on Google Play** — you'll need a new package ID
 
-## Step 6: Run the Android Build Workflow
+## Step 6: Run the Release Workflow
+
+Push a version tag matching `pubspec.yaml`'s `version:` (e.g. `git tag v1.1.0 && git push origin v1.1.0`), or:
 
 1. Go to [GitHub Actions](https://github.com/Plangora/tuner/actions)
-2. Select **Build Android App** workflow
-3. Click **Run workflow** (uses main branch)
-4. The APK will be built and available in artifacts
+2. Select the **Release** workflow
+3. Click **Run workflow**
+
+The `release-android` job will build the signed APK and upload it as an artifact.
 
 The APK file can be downloaded after the build completes.
 
@@ -146,7 +149,7 @@ Share the APK directly with testers:
 
 Google Play prefers App Bundles (`.aab`) over APKs because they reduce download size.
 
-Edit `.github/workflows/build-android.yml` and uncomment the "Build release App Bundle" section to create an AAB instead.
+Edit the `Build release APK` step in the `release-android` job of `.github/workflows/release.yml` to run `flutter build appbundle --release` instead of `flutter build apk --release`.
 
 App Bundles can only be distributed via Google Play — they cannot be installed directly on devices.
 
