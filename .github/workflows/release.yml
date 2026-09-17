@@ -1,12 +1,14 @@
 name: Release
 
 # Fires only on a tag push, and only builds if the tag matches the
-# `version:` in pubspec.yaml (see the check-tag job) — pushing an unrelated
-# tag, or forgetting to bump pubspec.yaml, fails fast instead of shipping
-# the wrong build. Tag format: `v<version>` with no build-number suffix,
-# e.g. pubspec `version: 1.0.0+2` -> tag `v1.0.0`. The build number after
-# `+` still flows into versionCode/CFBundleVersion via `flutter build` as
-# usual; it's just not part of the tag itself.
+# `version:` in pubspec.yaml exactly, build number included (see the
+# check-tag job) — pushing an unrelated tag, or forgetting to bump
+# pubspec.yaml, fails fast instead of shipping the wrong build. Tag format:
+# `v<version>+<build>`, e.g. pubspec `version: 1.0.1+3` -> tag `v1.0.1+3`.
+# The build number is part of the tag (not just pubspec.yaml) because
+# TestFlight/Play Console reject a re-upload of a build number that's
+# already been used — including it keeps every release tag unique instead
+# of needing to be deleted and recreated when only the build bumps.
 #
 # One-time setup (Apple certs/profiles, Android keystore, App Store
 # Connect API key secrets) is required before release-ios/release-android
@@ -16,7 +18,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+\+[0-9]+'
   workflow_dispatch:
 
 env:
@@ -34,7 +36,7 @@ jobs:
       - id: check
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          PUBSPEC_VERSION=$(grep -m1 '^version:' pubspec.yaml | sed 's/^version:[[:space:]]*//' | cut -d'+' -f1)
+          PUBSPEC_VERSION=$(grep -m1 '^version:' pubspec.yaml | sed 's/^version:[[:space:]]*//')
 
           echo "Tag version:     $TAG_VERSION"
           echo "pubspec version: $PUBSPEC_VERSION"

@@ -120,7 +120,7 @@ Replace `YOUR_TEAM_ID` with your Apple Developer Team ID:
 
 ## Step 8: Run the Release Workflow
 
-Push a version tag matching `pubspec.yaml`'s `version:` (e.g. `git tag v1.1.0 && git push origin v1.1.0`), or:
+Push a version tag matching `pubspec.yaml`'s `version:` exactly, build number included (e.g. `git tag v1.1.0+5 && git push origin v1.1.0+5`), or:
 
 1. Go to [GitHub Actions](https://github.com/Plangora/tuner/actions)
 2. Select the **Release** workflow

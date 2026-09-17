@@ -38,7 +38,7 @@ If you want full audio support on web, consider:
    - Source: Deploy from a branch
    - Branch: `gh-pages`
 
-2. The `release-web` job in the **Release** workflow (`.github/workflows/release.yml`) automatically deploys to GitHub Pages when you push a version tag (e.g. `v1.0.0`) or run the workflow manually.
+2. The `release-web` job in the **Release** workflow (`.github/workflows/release.yml`) automatically deploys to GitHub Pages when you push a version tag matching `pubspec.yaml`'s `version:`, build number included (e.g. `v1.0.1+3`) or run the workflow manually.
 
 3. Access at: `https://plangora.github.io/tuner/`
 

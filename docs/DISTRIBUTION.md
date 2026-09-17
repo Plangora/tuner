@@ -52,7 +52,7 @@ CI lives in two workflows under `.github/workflows/`:
 
 The release workflow can be triggered:
 - **Manually**: Actions tab → "Release" → "Run workflow"
-- **Automatically**: Push a version tag (e.g., `git tag v1.1.0 && git push --tags`)
+- **Automatically**: Push a version tag matching `pubspec.yaml`'s `version:` exactly, build number included (e.g., `git tag v1.1.0+5 && git push --tags`)
 
 ### Workflow Details
 
@@ -77,6 +77,8 @@ version: 1.1.0+5
 - `1.1.0` = public version (shown to users)
 - `5` = build number (internal, increments each build)
 
+The release tag must include both, e.g. `v1.1.0+5` — TestFlight and Play Console both reject a re-upload of a build number that's already been used, so a tag without the build number would collide the next time only the build bumps.
+
 ### iOS & Android App Store Requirements
 
 - **Public version** must match across platforms
@@ -86,10 +88,10 @@ version: 1.1.0+5
 ## Recommended Release Workflow
 
 1. **Update code** and test locally
-2. **Bump version** in pubspec.yaml (e.g., 1.0.0 → 1.1.0)
+2. **Bump version** in pubspec.yaml (e.g., 1.0.0+2 → 1.1.0+5)
 3. **Commit and tag**: 
    ```bash
-   git tag v1.1.0
+   git tag v1.1.0+5
    git push origin --tags
    ```
 4. **Workflows trigger automatically** on tag push
