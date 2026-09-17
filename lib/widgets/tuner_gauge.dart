@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:tuner/theme/app_theme.dart';
 
 /// A custom gauge widget that displays tuning offset visually.
 ///
@@ -58,21 +59,30 @@ class GaugePainter extends CustomPainter {
     _drawArc(canvas, centerX, centerY, radius);
     _drawNeedle(canvas, centerX, centerY, radius);
 
-    // Draw center black circle
+    // Draw center hub glow
+    canvas.drawCircle(
+      Offset(centerX, centerY),
+      16,
+      Paint()
+        ..color = AppColors.purple.withValues(alpha: 0.4)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+    );
+
+    // Draw center dark circle
     canvas.drawCircle(
       Offset(centerX, centerY),
       12,
       Paint()
-        ..color = Colors.black
+        ..color = AppColors.background
         ..style = PaintingStyle.fill,
     );
 
-    // Draw center white dot
+    // Draw center neon dot
     canvas.drawCircle(
       Offset(centerX, centerY),
       6,
       Paint()
-        ..color = Colors.white
+        ..color = AppColors.cyan
         ..style = PaintingStyle.fill,
     );
   }
@@ -83,20 +93,20 @@ class GaugePainter extends CustomPainter {
       radius: radius,
     );
 
-    // Draw background gray arc
+    // Draw background arc in a dim neon track color
     canvas.drawArc(
       rect,
       math.pi, // Start at 180 degrees (left)
       math.pi, // Span 180 degrees
       false,
       Paint()
-        ..color = Colors.grey
+        ..color = AppColors.trackInactive
         ..strokeWidth = 8
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round,
     );
 
-    // Draw in-tune zone (green) at the center of the arc (±5 cents).
+    // Draw in-tune zone (glowing neon green) at the center of the arc (±5 cents).
     // The arc spans 180 degrees over ±100 cents, so ±5 cents is ±4.5 degrees.
     final inTuneStart = _centsToAngle(-5);
     final inTuneSweep = _centsToAngle(5) - inTuneStart;
@@ -106,7 +116,19 @@ class GaugePainter extends CustomPainter {
       inTuneSweep,
       false,
       Paint()
-        ..color = Colors.green
+        ..color = AppColors.success.withValues(alpha: 0.5)
+        ..strokeWidth = 20
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
+    canvas.drawArc(
+      rect,
+      inTuneStart,
+      inTuneSweep,
+      false,
+      Paint()
+        ..color = AppColors.success
         ..strokeWidth = 12
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round,
@@ -126,7 +148,7 @@ class GaugePainter extends CustomPainter {
         Offset(startX, startY),
         Offset(endX, endY),
         Paint()
-          ..color = Colors.black
+          ..color = AppColors.purple
           ..strokeWidth = 2,
       );
     }
@@ -136,9 +158,20 @@ class GaugePainter extends CustomPainter {
     final clampedOffset = centsOffset.clamp(-100.0, 100.0);
     final angle = _centsToAngle(clampedOffset);
 
-    final needleColor = isInTune ? Colors.green : Colors.red;
+    final needleColor = isInTune ? AppColors.success : AppColors.magenta;
     final endX = centerX + radius * 0.9 * math.cos(angle);
     final endY = centerY + radius * 0.9 * math.sin(angle);
+
+    // Glow pass behind the needle
+    canvas.drawLine(
+      Offset(centerX, centerY),
+      Offset(endX, endY),
+      Paint()
+        ..color = needleColor.withValues(alpha: 0.5)
+        ..strokeWidth = 10
+        ..strokeCap = StrokeCap.round
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+    );
 
     canvas.drawLine(
       Offset(centerX, centerY),

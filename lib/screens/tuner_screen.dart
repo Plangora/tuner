@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tuner/models/note.dart';
 import 'package:tuner/services/audio_service.dart';
+import 'package:tuner/theme/app_theme.dart';
 import 'package:tuner/widgets/note_display.dart';
 import 'package:tuner/widgets/tuner_gauge.dart';
 import 'package:tuner/widgets/tuning_status.dart';
@@ -97,7 +98,7 @@ class _TunerScreenState extends State<TunerScreen> {
           Icon(
             Icons.error,
             size: 48,
-            color: Colors.red,
+            color: AppColors.error,
           ),
           const SizedBox(height: 16),
           Text(_errorMessage),

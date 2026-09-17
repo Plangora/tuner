@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tuner/models/note.dart';
+import 'package:tuner/theme/app_theme.dart';
 
 /// A widget that displays the current note name and detected frequency.
 ///
@@ -32,6 +33,8 @@ class NoteDisplay extends StatelessWidget {
           style: textTheme.displayLarge?.copyWith(
             fontWeight: FontWeight.bold,
             fontSize: 96,
+            color: AppColors.cyan,
+            shadows: AppTheme.glow(AppColors.cyan, blurRadius: 20),
           ),
         ),
         const SizedBox(height: 12),
@@ -40,6 +43,7 @@ class NoteDisplay extends StatelessWidget {
           '${detectedFrequency.toStringAsFixed(1)} Hz',
           style: textTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.w600,
+            color: AppColors.purple,
           ),
         ),
       ],

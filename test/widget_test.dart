@@ -24,8 +24,9 @@ class RecordingCanvas implements ui.Canvas {
   dynamic noSuchMethod(Invocation invocation) => null;
 }
 
-/// Paints the gauge and returns the needle line (the longest line drawn from
-/// the gauge's pivot point).
+/// Paints the gauge and returns the needle line drawn from the gauge's pivot
+/// point. The painter draws a blurred glow pass along the same geometry
+/// before the crisp needle line, so this returns the last (topmost) match.
 (Offset, Offset) needleFor(double centsOffset) {
   const size = Size(300, 150);
   final pivot = Offset(size.width / 2, size.height * 0.8);
@@ -34,8 +35,8 @@ class RecordingCanvas implements ui.Canvas {
   GaugePainter(centsOffset: centsOffset, isInTune: false).paint(canvas, size);
 
   final needles = canvas.lines.where((line) => line.$1 == pivot).toList();
-  expect(needles, hasLength(1));
-  return needles.first;
+  expect(needles, isNotEmpty);
+  return needles.last;
 }
 
 void main() {
