@@ -53,12 +53,14 @@ class GaugePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final centerX = size.width / 2;
-    final centerY = size.height * 0.8;
     // Bounded by both dimensions so the arc (plus its tick marks, which
     // extend another 25px past the radius) stays inside the painter's box
     // on short/wide layouts (e.g. iPad, where width alone would overflow
     // upward into the widget above) as well as tall/narrow ones (phones).
-    final radius = math.min(size.width * 0.35, size.height * 0.6);
+    final radius = math.min(size.width / 2 - 30, size.height * 0.6);
+    // Vertically centers the half-circle; equals 0.8 * height when the
+    // radius is height-bound.
+    final centerY = (size.height + radius) / 2;
 
     _drawArc(canvas, centerX, centerY, radius);
     _drawNeedle(canvas, centerX, centerY, radius);

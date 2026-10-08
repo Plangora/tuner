@@ -129,7 +129,8 @@ class _TunerScreenState extends State<TunerScreen> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            flex: 1,
+            // Weighted so the gauge gets most of the space below the note.
+            flex: 3,
             child: TunerGauge(
               centsOffset: _centsOffset,
               isInTune: _isInTune,
@@ -137,8 +138,7 @@ class _TunerScreenState extends State<TunerScreen> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            // Weighted so the status label occupies roughly half the screen.
-            flex: 3,
+            flex: 1,
             child: TuningStatus(
               centsOffset: _centsOffset,
               isInTune: _isInTune,
