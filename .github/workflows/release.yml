@@ -105,16 +105,30 @@ jobs:
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           EOF
 
-      - name: Build release APK
-        run: flutter build apk --release --verbose
+      - name: Build release app bundle
+        run: flutter build appbundle --release --verbose
 
-      - name: Upload APK artifact
+      - name: Upload app bundle artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: android-release
-          path: build/app/outputs/flutter-apk/*.apk
+          path: build/app/outputs/bundle/release/*.aab
           retention-days: 30
+
+      # Requires the Play Console app record to exist and its first bundle
+      # to have been uploaded by hand — the Play API can't create an app.
+      # `status: draft` because the API rejects anything else until the app
+      # has had a production release approved; switch to `completed` after
+      # that to skip the manual "roll out" click in the console.
+      - name: Upload to Google Play (internal testing)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.plangora.tuner
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: draft
 
   release-ios:
     name: Release iOS
