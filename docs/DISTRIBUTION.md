@@ -26,10 +26,10 @@ This guide covers distributing the Tuner app across iOS, Android, macOS, and web
 
 ### Android → Google Play
 1. Create **Android signing keystore**
-2. Follow `docs/android-signing-setup.md` (Steps 1-4)
-3. Add GitHub Secrets (ANDROID_KEYSTORE_B64, passwords)
+2. Follow `docs/android-signing-setup.md` (Steps 1-5)
+3. Add GitHub Secrets (ANDROID_KEYSTORE_B64, passwords, PLAY_SERVICE_ACCOUNT_JSON)
 4. Push a version tag to trigger the **Release** workflow's `release-android` job
-5. Upload APK to Google Play Console
+5. The job uploads the app bundle to the internal testing track as a draft; promote it to production in Google Play Console
 
 **Timeline:** 20 minutes setup + 10 minutes build + 24 hours review
 
@@ -59,7 +59,7 @@ The release workflow can be triggered:
 | Job (in `release.yml`) | Output |
 |----------|--------|
 | `release-ios` | `.ipa` file (App Store / TestFlight) |
-| `release-android` | `.apk` file (Google Play or direct) |
+| `release-android` | `.aab` app bundle, uploaded to Google Play internal testing as a draft |
 | `release-macos` | `.app` bundle + `.dmg` installer |
 | `release-web` | Static site, deployed to GitHub Pages |
 
@@ -98,7 +98,7 @@ The release tag must include both, e.g. `v1.1.0+5` — TestFlight and Play Conso
 5. **Review builds** in GitHub Actions artifacts
 6. **Submit to stores**:
    - iOS: Use Xcode or App Store Connect
-   - Android: Use Google Play Console
+   - Android: Promote the uploaded draft to production in Google Play Console
    - macOS: Release on GitHub Releases
 
 ## Store Listings & Metadata
@@ -161,6 +161,8 @@ No official storefront setup needed. If hosting on GitHub:
 - Check: Keystore file is base64 encoded correctly
 - Check: Passwords stored in GitHub Secrets exactly as set
 - Check: No spaces or extra characters in secrets
+- Check: Build number in `pubspec.yaml` is higher than the last one uploaded to Google Play
+- Check: The Play service account still has access to Tuner (see `android-signing-setup.md`, Step 5)
 
 ### macOS Build Fails
 - Check: Flutter SDK version matches in workflow
@@ -171,10 +173,8 @@ No official storefront setup needed. If hosting on GitHub:
 - [ ] Web build (responsive design for browser)
 - [ ] Windows build (UWP or Win32)
 - [ ] Linux build (Snap or AppImage)
-- [ ] Automatic play store upload (App Store Connect API)
 - [ ] Version auto-update mechanism
 - [ ] Crash reporting & analytics
-- [ ] Beta testing tracks (TestFlight, Google Play internal testing)
 
 ## Resources
 
