@@ -1,0 +1,47 @@
+import 'dart:math' as math;
+import 'dart:typed_data';
+
+/// Throwaway PCM bar generator. Absolute rounding avoids per-beat bias;
+/// repeating a single rounded bar still has a small measurable tempo bias.
+class Rhythm {
+  Rhythm(this.bpm) {
+    if (bpm < 40 || bpm > 240) throw ArgumentError.value(bpm, 'bpm');
+  }
+  final int bpm;
+  static const sampleRate = 44100;
+  int get frames => (sampleRate * 60 * 4 / bpm).round();
+  List<int> get onsets => [for (var beat = 0; beat < 4; beat++)
+    (beat * sampleRate * 60 / bpm).round()];
+
+  Uint8List wav() {
+    final bytes = Uint8List(44 + frames * 2);
+    final data = ByteData.sublistView(bytes);
+    void label(int at, String value) => bytes.setRange(at, at + value.length, value.codeUnits);
+    label(0, 'RIFF');
+    data.setUint32(4, bytes.length - 8, Endian.little);
+    label(8, 'WAVE');
+    label(12, 'fmt ');
+    data.setUint32(16, 16, Endian.little);
+    data.setUint16(20, 1, Endian.little); // PCM16 mono.
+    data.setUint16(22, 1, Endian.little);
+    data.setUint32(24, sampleRate, Endian.little);
+    data.setUint32(28, sampleRate * 2, Endian.little);
+    data.setUint16(32, 2, Endian.little);
+    data.setUint16(34, 16, Endian.little);
+    label(36, 'data');
+    data.setUint32(40, frames * 2, Endian.little);
+    final positions = onsets;
+    for (var beat = 0; beat < 4; beat++) {
+      final accented = beat == 0;
+      final frequency = accented ? 1800.0 : 1200.0;
+      final amplitude = accented ? 24000.0 : 14000.0;
+      const clickFrames = 882; // 20 ms, followed by real PCM silence.
+      for (var i = 0; i < clickFrames; i++) {
+        final envelope = math.exp(-7 * i / clickFrames) * (1 - i / clickFrames);
+        final sample = (amplitude * envelope * math.cos(2 * math.pi * frequency * i / sampleRate)).round();
+        data.setInt16(44 + (positions[beat] + i) * 2, sample, Endian.little);
+      }
+    }
+    return bytes;
+  }
+}

@@ -2,6 +2,9 @@
 
 A new Flutter project.
 
+See [CHANGELOG.md](CHANGELOG.md) for version history and release notes, and
+[docs/DISTRIBUTION.md](docs/DISTRIBUTION.md) for the release process.
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

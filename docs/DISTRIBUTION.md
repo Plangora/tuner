@@ -46,7 +46,7 @@ This guide covers distributing the Tuner app across iOS, Android, macOS, and web
 CI lives in two workflows under `.github/workflows/`:
 
 - **`ci.yml`** — runs `flutter analyze` and `flutter test` on every push to `master`/`main` and on pull requests. No builds.
-- **`release.yml`** — fires on a version tag push (`v1.2.0`, matching `pubspec.yaml`'s `version:`) or manual dispatch. Verifies the tag matches `pubspec.yaml`, re-runs analyze/test, then builds each platform in its own job.
+- **`release.yml`** — fires on a version tag push (`v1.1.0+5`, matching `pubspec.yaml`'s full `version:`) or manual dispatch. Verifies the tag matches `pubspec.yaml`, re-runs analyze/test, then builds each platform in its own job.
 
 ### Build Triggers
 
@@ -87,8 +87,8 @@ The release tag must include both, e.g. `v1.1.0+5` — TestFlight and Play Conso
 
 ## Recommended Release Workflow
 
-1. **Update code** and test locally
-2. **Bump version** in pubspec.yaml (e.g., 1.0.0+2 → 1.1.0+5)
+1. **Update code** and test locally. Add each feature, bug fix and user-visible change to the top Unreleased section in [CHANGELOG.md](../CHANGELOG.md) as it lands.
+2. **Set the version** in pubspec.yaml (e.g., 1.1.0+5) and make sure the changelog section matches it. Review the entries against changes since the previous tag and replace Unreleased with the release date before tagging.
 3. **Commit and tag**: 
    ```bash
    git tag v1.1.0+5
@@ -100,6 +100,12 @@ The release tag must include both, e.g. `v1.1.0+5` — TestFlight and Play Conso
    - iOS: Use Xcode or App Store Connect
    - Android: Promote the uploaded draft to production in Google Play Console
    - macOS: Release on GitHub Releases
+
+Use the matching version's changelog entries for GitHub release notes,
+TestFlight notes and store release notes, adjusting length or wording for
+each destination. The changelog is the source of truth; the current workflow
+does not publish release notes automatically. Start a new Unreleased section
+when choosing the next version/build, preserving previous release entries.
 
 ## Store Listings & Metadata
 
@@ -182,3 +188,15 @@ No official storefront setup needed. If hosting on GitHub:
 - [iOS App Store Review Guidelines](https://developer.apple.com/app-store/review/guidelines/)
 - [Google Play Policies](https://play.google.com/about/developer-content-policy/)
 - [GitHub Actions Secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
+
+## Metronome development and validation
+
+Use the project-local asdf pin, Flutter `3.47.8-stable` (`asdf exec flutter --version`). Test CI matches 3.47.8; keep release workflow changes coordinated with that toolchain.
+
+The tuner remains the launch screen. Its app-bar timer action opens the separate metronome. Returning stops clicks before restoring the microphone. Settings persist; audible playback never restores automatically. Tempo/pattern changes restart the bar, while volume changes apply without restarting.
+
+Native metronome/background controls are enabled on iOS, Android and macOS. iOS uses non-mixing playback for Now Playing eligibility, so it can pause other music. Android declares the media-playback foreground service/media receiver and retains the dynamically resolved play/pause/stop drawables with `res/raw/metronome_keep.xml`; verify those resources in shrunk release APKs. No battery-optimization exemption is requested. Web/Windows/Linux retain tuner access and show explicit metronome unavailability; Windows/Linux native builds still require their own platform checks.
+
+The audio buffer is generated locally and repeats natively, with no per-beat Dart calls. Optional external Xiph libraries are disabled through the SoLoud build hook. Native component notices are bundled in `assets/licenses/metronome-audio.txt` and registered with Flutter's license registry.
+
+See [metronome-validation.md](metronome-validation.md) for exact checks, device findings, the local JDK workaround and remaining calibrated-timing, phone-route/interruption and endurance checks. Passing development checks is not a claim that the full release device matrix has been completed.

@@ -1,0 +1,29 @@
+import 'dart:typed_data';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:metronome_probe/rhythm.dart';
+
+void main() {
+  test('120 BPM bar contains four evenly spaced accented pulses', () {
+    final rhythm = Rhythm(120);
+    expect(rhythm.frames, 88200);
+    expect(rhythm.onsets, [0, 22050, 44100, 66150]);
+    final wav = rhythm.wav();
+    expect(wav.length, 44 + 88200 * 2);
+    final data = wav.buffer.asByteData();
+    expect(data.getUint32(40, Endian.little), 176400);
+    expect(data.getInt16(44, Endian.little).abs(), greaterThan(
+      data.getInt16(44 + 22050 * 2, Endian.little).abs()));
+    expect(data.getInt16(wav.length - 2, Endian.little), 0);
+  });
+  test('fractional tempo rounds absolute positions, including loop boundary', () {
+    final rhythm = Rhythm(137);
+    expect(rhythm.frames, (44100 * 60 * 4 / 137).round());
+    for (var i = 0; i < 4; i++) {
+      expect((rhythm.onsets[i] - i * 44100 * 60 / 137).abs(), lessThanOrEqualTo(0.5));
+    }
+  });
+  test('out-of-range tempos are rejected', () {
+    expect(() => Rhythm(0), throwsArgumentError);
+    expect(() => Rhythm(241), throwsArgumentError);
+  });
+}

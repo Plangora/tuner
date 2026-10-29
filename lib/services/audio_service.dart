@@ -1,7 +1,9 @@
 import 'dart:async';
-import 'dart:typed_data';
 
-import 'package:audio_session/audio_session.dart';
+import 'package:flutter/foundation.dart';
+
+import 'tuner_capture.dart';
+
 import 'package:record/record.dart';
 
 import 'pitch_detector.dart';
@@ -10,11 +12,12 @@ import 'pitch_detector.dart';
 typedef PitchCallback = void Function(double frequency);
 
 /// Manages audio recording and real-time pitch detection
-class AudioService {
+class AudioService implements TunerCapture {
   static const int sampleRate = 44100;
   static const int channelCount = 1;
 
-  late AudioRecorder _audioRecorder;
+  AudioRecorder? _audioRecorder;
+  bool _recorderStarted = false;
   Stream<Uint8List>? _audioStream;
   StreamSubscription<Uint8List>? _audioSubscription;
   bool _isRecording = false;
@@ -23,26 +26,19 @@ class AudioService {
   /// Called when the audio stream reports an error.
   void Function(Object error)? onStreamError;
 
-  /// Initializes the audio service with proper audio session configuration
+  /// Initializes the audio service and requests microphone permission; session policy is app-owned
   ///
   /// Throws an exception with message "Microphone permission denied" if initialization fails.
+  @override
   Future<void> initialize() async {
-    _audioRecorder = AudioRecorder();
-
-    try {
-      final session = await AudioSession.instance;
-      await session.configure(
-        AudioSessionConfiguration(
-          avAudioSessionCategory: AVAudioSessionCategory.record,
-          avAudioSessionCategoryOptions:
-              AVAudioSessionCategoryOptions.duckOthers,
-          avAudioSessionMode: AVAudioSessionMode.defaultMode,
-          avAudioSessionRouteSharingPolicy:
-              AVAudioSessionRouteSharingPolicy.defaultPolicy,
-        ),
+    final recorder = _audioRecorder ??= AudioRecorder();
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      await recorder.ios?.manageAudioSession(false);
+    }
+    if (!await recorder.hasPermission()) {
+      throw StateError(
+        'Microphone permission denied. Enable access in Settings, then tap Retry.',
       );
-    } catch (e) {
-      throw Exception('Microphone permission denied');
     }
   }
 
@@ -50,25 +46,26 @@ class AudioService {
   ///
   /// The provided callback is called for each detected frequency.
   /// Throws an exception with message "Microphone permission denied" if permission is denied.
+  @override
   Future<void> startRecording(PitchCallback onPitchDetected) async {
     _onPitchDetected = onPitchDetected;
 
-    // Check permission
-    final isPermitted = await _audioRecorder.hasPermission();
-    if (!isPermitted) {
-      throw Exception('Microphone permission denied');
+    if (_isRecording) return;
+    if (_audioRecorder == null) await initialize();
+    _recorderStarted = true;
+    try {
+      _audioStream = await _audioRecorder!.startStream(
+        const RecordConfig(
+          encoder: AudioEncoder.pcm16bits,
+          sampleRate: sampleRate,
+          numChannels: channelCount,
+        ),
+      );
+      _isRecording = true;
+    } catch (_) {
+      await stopRecording();
+      rethrow;
     }
-
-    _isRecording = true;
-
-    // Start recording stream
-    _audioStream = await _audioRecorder.startStream(
-      const RecordConfig(
-        encoder: AudioEncoder.pcm16bits,
-        sampleRate: sampleRate,
-        numChannels: channelCount,
-      ),
-    );
 
     // Listen to stream, keeping the subscription so it can be cancelled.
     await _audioSubscription?.cancel();
@@ -77,6 +74,12 @@ class AudioService {
       onError: (Object error) {
         _isRecording = false;
         onStreamError?.call(error);
+      },
+      onDone: () {
+        if (_isRecording) {
+          _isRecording = false;
+          onStreamError?.call(StateError('Microphone stream ended'));
+        }
       },
       cancelOnError: true,
     );
@@ -125,21 +128,25 @@ class AudioService {
   }
 
   /// Stops audio recording
+  @override
   Future<void> stopRecording() async {
     _isRecording = false;
     await _audioSubscription?.cancel();
     _audioSubscription = null;
-    await _audioRecorder.stop();
+    if (_recorderStarted) {
+      await _audioRecorder?.stop();
+      _recorderStarted = false;
+    }
     _audioStream = null;
   }
 
   /// Disposes the audio service resources
+  @override
   Future<void> dispose() async {
-    if (_isRecording) {
-      await stopRecording();
-    }
+    await stopRecording();
     await _audioSubscription?.cancel();
     _audioSubscription = null;
-    await _audioRecorder.dispose();
+    await _audioRecorder?.dispose();
+    _audioRecorder = null;
   }
 }

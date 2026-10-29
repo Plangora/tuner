@@ -1,14 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:tuner/models/note.dart';
-import 'package:tuner/services/audio_service.dart';
+import 'package:tuner/services/practice_controller.dart';
+import 'package:tuner/models/metronome_state.dart';
 import 'package:tuner/theme/app_theme.dart';
 import 'package:tuner/widgets/note_display.dart';
 import 'package:tuner/widgets/tuner_gauge.dart';
 import 'package:tuner/widgets/tuning_status.dart';
 
+import 'metronome_screen.dart';
+
 /// Main tuner screen widget that manages audio recording and real-time pitch display.
 class TunerScreen extends StatefulWidget {
-  const TunerScreen({super.key});
+  const TunerScreen({super.key, required this.controller});
+  final PracticeController controller;
 
   @override
   State<TunerScreen> createState() => _TunerScreenState();
@@ -16,28 +22,42 @@ class TunerScreen extends StatefulWidget {
 
 /// State management for TunerScreen handling audio integration and UI updates.
 class _TunerScreenState extends State<TunerScreen> {
-  late AudioService _audioService;
   double _currentFrequency = 0;
   Note? _currentNote;
   double _centsOffset = 0;
   bool _isInTune = false;
-  bool _hasError = false;
-  String _errorMessage = '';
+  bool _openingMetronome = false;
+
+  Future<void> _openMetronome() async {
+    if (_openingMetronome) return;
+    _openingMetronome = true;
+    unawaited(widget.controller.enterMetronome());
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MetronomeScreen(controller: widget.controller),
+      ),
+    );
+    _openingMetronome = false;
+  }
 
   @override
   void initState() {
     super.initState();
-    _audioService = AudioService();
-    _initializeAudio();
+    widget.controller.addListener(_controllerChanged);
   }
 
-  /// Initializes the audio service and starts tuning immediately.
-  Future<void> _initializeAudio() async {
-    try {
-      await _audioService.initialize();
-      await _audioService.startRecording(_onPitchDetected);
-    } catch (e) {
-      _showError(e.toString());
+  void _controllerChanged() {
+    if (!mounted) return;
+    final frequency = widget.controller.frequency;
+    if (frequency > 0 && widget.controller.state.mode == PracticeMode.tuner) {
+      _onPitchDetected(frequency);
+    } else {
+      setState(() {
+        _currentFrequency = 0;
+        _currentNote = null;
+        _centsOffset = 0;
+        _isInTune = false;
+      });
     }
   }
 
@@ -63,17 +83,9 @@ class _TunerScreenState extends State<TunerScreen> {
     });
   }
 
-  /// Shows error message
-  void _showError(String message) {
-    setState(() {
-      _hasError = true;
-      _errorMessage = message;
-    });
-  }
-
   @override
   void dispose() {
-    _audioService.dispose();
+    widget.controller.removeListener(_controllerChanged);
     super.dispose();
   }
 
@@ -84,8 +96,18 @@ class _TunerScreenState extends State<TunerScreen> {
         title: const Text('Instrument Tuner'),
         centerTitle: true,
         elevation: 0,
+        actions: [
+          IconButton(
+            key: const ValueKey('open-metronome'),
+            tooltip: 'Metronome',
+            onPressed: _openMetronome,
+            icon: const Icon(Icons.timer_outlined),
+          ),
+        ],
       ),
-      body: _hasError ? _buildErrorView() : _buildTunerView(),
+      body: widget.controller.state.error != null
+          ? _buildErrorView()
+          : _buildTunerView(),
     );
   }
 
@@ -95,21 +117,15 @@ class _TunerScreenState extends State<TunerScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.error,
-            size: 48,
-            color: AppColors.error,
-          ),
+          Icon(Icons.error, size: 48, color: AppColors.error),
           const SizedBox(height: 16),
-          Text(_errorMessage),
+          Text(
+            widget.controller.state.error ?? '',
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _hasError = false;
-              });
-              _initializeAudio();
-            },
+            onPressed: () => widget.controller.enterTuner(),
             child: const Text('Retry'),
           ),
         ],
@@ -131,18 +147,12 @@ class _TunerScreenState extends State<TunerScreen> {
           Expanded(
             // Weighted so the gauge gets most of the space below the note.
             flex: 3,
-            child: TunerGauge(
-              centsOffset: _centsOffset,
-              isInTune: _isInTune,
-            ),
+            child: TunerGauge(centsOffset: _centsOffset, isInTune: _isInTune),
           ),
           const SizedBox(height: 16),
           Expanded(
             flex: 1,
-            child: TuningStatus(
-              centsOffset: _centsOffset,
-              isInTune: _isInTune,
-            ),
+            child: TuningStatus(centsOffset: _centsOffset, isInTune: _isInTune),
           ),
         ],
       ),

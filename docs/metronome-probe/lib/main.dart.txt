@@ -1,0 +1,213 @@
+// THROWAWAY FEASIBILITY PROBE. No production tuner integration.
+import 'dart:async';
+import 'package:audio_service/audio_service.dart';
+import 'package:audio_session/audio_session.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:marionette_flutter/marionette_flutter.dart';
+import 'package:flutter_soloud/flutter_soloud.dart';
+import 'rhythm.dart';
+
+Future<void> main() async {
+  final collector = PrintLogCollector();
+  if (kDebugMode) {
+    MarionetteBinding.ensureInitialized(MarionetteConfiguration(logCollector: collector));
+    final originalPrint = debugPrint;
+    debugPrint = (String? message, {int? wrapWidth}) {
+      if (message != null) collector.addLog(message);
+      originalPrint(message, wrapWidth: wrapWidth);
+    };
+  } else {
+    WidgetsFlutterBinding.ensureInitialized();
+  }
+  final handler = await AudioService.init(
+    builder: ProbeHandler.new,
+    config: const AudioServiceConfig(
+      androidNotificationChannelId: 'com.plangora.spike.metronome',
+      androidNotificationChannelName: 'Metronome probe',
+      androidNotificationOngoing: true,
+    ),
+  );
+  if (kDebugMode) {
+    registerMarionetteExtension(
+      name: 'probe.nativeStatus',
+      description: 'Read actual native device/voice state; does not measure audible output.',
+      callback: (_) async {
+        final probe = handler;
+        return MarionetteExtensionResult.success({
+          'bpm': probe.bpm,
+          'playing': probe.playbackState.value.playing,
+          'processingState': probe.playbackState.value.processingState.name,
+          'voiceValid': probe.voice != null && probe.engine.getIsValidVoiceHandle(probe.voice!),
+          'device': probe.initialized ? probe.engine.getAudioDeviceState().name : 'uninitialized',
+          'positionUs': probe.voice == null ? null : probe.engine.getPosition(probe.voice!).inMicroseconds,
+          'error': probe.playbackState.value.errorMessage,
+        });
+      },
+    );
+  }
+  runApp(MaterialApp(home: ProbeScreen(handler)));
+}
+
+class ProbeHandler extends BaseAudioHandler {
+  final engine = SoLoud.instance;
+  AudioSession? session;
+  AudioSource? source;
+  SoundHandle? voice;
+  int bpm = 120;
+  bool initialized = false;
+  Future<void> pending = Future.value();
+
+  Future<void> serial(Future<void> Function() operation) {
+    final next = pending.then((_) => operation());
+    pending = next.catchError((Object error, StackTrace stack) async {
+      debugPrint('PROBE ERROR: $error');
+      if (voice case final handle?) {
+        await engine.stop(handle);
+        voice = null;
+      }
+      await session?.setActive(false);
+      playbackState.add(PlaybackState(
+        processingState: AudioProcessingState.error,
+        playing: false,
+        errorCode: 1,
+        errorMessage: error.toString(),
+      ));
+    });
+    return pending;
+  }
+
+  Future<void> initialize() async {
+    if (initialized) return;
+    await engine.init(sampleRate: 44100);
+    session = await AudioSession.instance;
+    await session!.configure(const AudioSessionConfiguration(
+      avAudioSessionCategory: AVAudioSessionCategory.playback,
+      // Non-mixable playback is required for iOS Now Playing eligibility.
+      avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.none,
+      androidAudioAttributes: AndroidAudioAttributes(
+        contentType: AndroidAudioContentType.music,
+        usage: AndroidAudioUsage.media,
+      ),
+      androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransientMayDuck,
+      androidWillPauseWhenDucked: true,
+    ));
+    session!.interruptionEventStream.listen((event) {
+      if (event.begin) unawaited(pause());
+    });
+    session!.becomingNoisyEventStream.listen((_) => unawaited(pause()));
+    engine.audioDeviceStartFailures.listen((error) {
+      unawaited(serial(() async => throw StateError('Output unavailable: $error')));
+    });
+    initialized = true;
+  }
+
+  void publish({required bool playing, bool stopped = false}) {
+    mediaItem.add(stopped ? null : MediaItem(
+      id: 'metronome-probe', title: 'Metronome probe — $bpm BPM',
+      artist: 'Throwaway feasibility test',
+    ));
+    playbackState.add(PlaybackState(
+      controls: stopped ? [] : [
+        playing ? MediaControl.pause : MediaControl.play,
+        MediaControl.stop,
+      ],
+      systemActions: const {},
+      androidCompactActionIndices: stopped ? [] : [0],
+      processingState: stopped ? AudioProcessingState.idle : AudioProcessingState.ready,
+      playing: playing,
+    ));
+    debugPrint('PROBE playing=$playing stopped=$stopped bpm=$bpm');
+  }
+
+  Future<void> startLoop() async {
+    await initialize();
+    if (!await session!.setActive(true)) throw StateError('Audio focus denied');
+    source ??= await engine.loadMem('bar-$bpm.wav', Rhythm(bpm).wav());
+    voice = engine.play(source!, volume: 0.5, looping: true);
+    engine.setInaudibleBehavior(voice!, true, false);
+    if (!engine.getIsValidVoiceHandle(voice!)) throw StateError('No playback voice');
+    await engine.startAudioDevice();
+    publish(playing: true);
+  }
+
+  @override
+  Future<void> play() => serial(() async {
+    if (voice == null) await startLoop();
+  });
+
+  @override
+  Future<void> pause() => serial(() async {
+    if (voice case final handle?) await engine.stop(handle);
+    voice = null;
+    await session?.setActive(false);
+    publish(playing: false);
+  });
+
+  @override
+  Future<void> stop() => serial(() async {
+    if (voice case final handle?) await engine.stop(handle);
+    voice = null;
+    if (source case final loaded?) await engine.disposeSource(loaded);
+    source = null;
+    await session?.setActive(false);
+    publish(playing: false, stopped: true);
+  });
+
+  @override
+  Future<dynamic> customAction(String name, [Map<String, dynamic>? extras]) async {
+    if (name == 'tempo') {
+      await serial(() async {
+        final nextBpm = extras!['bpm'] as int;
+        Rhythm(nextBpm); // Validate before touching playback.
+        final restart = voice != null;
+        if (voice case final handle?) await engine.stop(handle);
+        voice = null;
+        if (source case final loaded?) await engine.disposeSource(loaded);
+        source = null;
+        bpm = nextBpm;
+        if (restart) { await startLoop(); } else { publish(playing: false); }
+      });
+    } else if (name == 'blockDart' && voice != null) {
+      debugPrint('PROBE block Dart for 5 seconds; native audio should continue');
+      final watch = Stopwatch()..start();
+      while (watch.elapsedMilliseconds < 5000) { /* Deliberate UI stall. */ }
+      debugPrint('PROBE block ended; voice=${engine.getIsValidVoiceHandle(voice!)} device=${engine.getAudioDeviceState()}');
+    }
+    return null;
+  }
+}
+
+class ProbeScreen extends StatelessWidget {
+  const ProbeScreen(this.handler, {super.key});
+  final AudioHandler handler;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Metronome feasibility probe')),
+    body: Center(child: StreamBuilder<PlaybackState>(
+      stream: handler.playbackState,
+      builder: (context, snapshot) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('Throwaway · 4 beats/bar · first-beat accent · 50% volume'),
+          const Text('Tempo edits RESTART the bar; seamless edits are unproven.'),
+          Text(snapshot.data?.errorMessage ??
+            (snapshot.data?.playing == true ? 'Playing' : 'Stopped / paused')),
+          Wrap(spacing: 12, children: [
+            ElevatedButton(onPressed: handler.play, child: const Text('Start / resume')),
+            ElevatedButton(onPressed: handler.pause, child: const Text('Pause')),
+            ElevatedButton(onPressed: handler.stop, child: const Text('Stop')),
+          ]),
+          Wrap(spacing: 12, children: [for (final bpm in [40, 120, 137, 240])
+            ElevatedButton(onPressed: () => handler.customAction('tempo', {'bpm': bpm}),
+              child: Text('$bpm BPM')),
+          ]),
+          ElevatedButton(onPressed: () => handler.customAction('blockDart'),
+            child: const Text('Block Dart for 5 seconds')),
+          const Text('Lock phone / switch apps, then pause from system controls.'),
+        ],
+      ),
+    )),
+  );
+}
