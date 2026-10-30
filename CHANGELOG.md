@@ -8,6 +8,23 @@ Changed or Fixed. It is marked **Unreleased** until it is tagged; replace
 that marker with the release date, and start a new section when the next
 version/build is chosen. Use that version's entries as its release notes.
 
+## [1.1.0+8] - 2026-10-30
+
+### Added
+
+- Choose whether to accent the first metronome beat. The choice is saved and
+  defaults to on for existing installations.
+
+### Changed
+
+- The metronome uses a clearer Woodblock A click. The tuner now opens the
+  metronome from a larger, outlined, icon-only button in the top-right header.
+
+### Fixed
+
+- Preserves the iPhone metronome startup fix and mixes metronome playback with
+  music from other apps on iOS and Android.
+
 Historical sections were reconstructed from the existing git tags and
 commit history. Their dates are the tagged commits' dates, rather than
 verified store publication dates. The original `v1.0.0` tag points to

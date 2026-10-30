@@ -14,13 +14,78 @@ void main() {
     final data = ByteData.sublistView(wav);
     expect(wav.length, 44 + 176400 * 2);
     expect(data.getUint32(40, Endian.little), 352800);
-    final accent = data.getInt16(44, Endian.little).abs();
-    final subdivision = data.getInt16(44 + 11025 * 2, Endian.little).abs();
-    final beat = data.getInt16(44 + 22050 * 2, Endian.little).abs();
+    int peakAt(int frame) => [
+      for (var i = 0; i < 1323; i++)
+        data.getInt16(44 + (frame + i) * 2, Endian.little).abs(),
+    ].reduce((a, b) => a > b ? a : b);
+    final accent = peakAt(0);
+    final subdivision = peakAt(11025);
+    final beat = peakAt(22050);
     expect(accent, greaterThan(beat));
     expect(beat, greaterThan(subdivision));
-    expect(data.getInt16(44 + 88200 * 2, Endian.little).abs(), accent);
+    expect(peakAt(88200), accent);
     expect(data.getInt16(wav.length - 2, Endian.little), 0);
+  });
+  test('woodblock A keeps all beats identical when accent is disabled', () {
+    final settings = MetronomeSettings(
+      bpm: 120,
+      beatsPerBar: 3,
+      subdivision: 2,
+      accentFirstBeat: false,
+    );
+    final rhythm = MetronomeRhythm(settings);
+    final data = ByteData.sublistView(rhythm.wav());
+    final beatFrames = MetronomeRhythm.sampleRate * 60 ~/ settings.bpm;
+    final samplesPerClick = 1323;
+    List<int> clickAt(int onset) => [
+      for (var frame = 0; frame < samplesPerClick; frame++)
+        data.getInt16(44 + (onset + frame) * 2, Endian.little),
+    ];
+    final first = clickAt(rhythm.onsets[0]);
+    expect(clickAt(beatFrames), first);
+    expect(clickAt(beatFrames * 2), first);
+  });
+  test('woodblock A gives the first beat a stronger sound when enabled', () {
+    final rhythm = MetronomeRhythm(
+      MetronomeSettings(bpm: 120, beatsPerBar: 3, subdivision: 2),
+    );
+    final wav = rhythm.wav();
+    final data = ByteData.sublistView(wav);
+    final first = [
+      for (var i = 0; i < 1323; i++) data.getInt16(44 + i * 2, Endian.little),
+    ];
+    final secondOnset = rhythm.onsets[2];
+    final second = [
+      for (var i = 0; i < 1323; i++)
+        data.getInt16(44 + (secondOnset + i) * 2, Endian.little),
+    ];
+    expect(first, isNot(second));
+    expect(
+      first.map((v) => v.abs()).reduce((a, b) => a > b ? a : b),
+      greaterThan(second.map((v) => v.abs()).reduce((a, b) => a > b ? a : b)),
+    );
+    expect(wav, isNotEmpty);
+  });
+  test('woodblock PCM keeps full-scale headroom at maximum app volume', () {
+    for (final accentFirstBeat in [true, false]) {
+      final rhythm = MetronomeRhythm(
+        MetronomeSettings(
+          bpm: 240,
+          beatsPerBar: 1,
+          subdivision: 4,
+          volume: 1,
+          accentFirstBeat: accentFirstBeat,
+        ),
+      );
+      final data = ByteData.sublistView(rhythm.wav());
+      var peak = 0;
+      for (var frame = 0; frame < rhythm.frames; frame++) {
+        final sample = data.getInt16(44 + frame * 2, Endian.little).abs();
+        if (sample > peak) peak = sample;
+      }
+      expect(peak, lessThanOrEqualTo(24000));
+      expect(peak, lessThan(32768));
+    }
   });
   test(
     'absolute frame rounding controls fractional tempo and loop-seam error',

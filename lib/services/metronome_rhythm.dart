@@ -18,6 +18,35 @@ class MetronomeRhythm {
     for (var i = 0; i < pulseCount; i++)
       (i * sampleRate * 60 / (settings.bpm * settings.subdivision)).round(),
   ];
+
+  static final _woodblockAccent = _woodblock(1950, 24000);
+  static final _woodblockBeat = _woodblock(1550, 14000);
+  static final _woodblockSubdivision = _woodblock(1550, 8000);
+
+  static List<int> _woodblock(double frequency, int amplitude) {
+    const clickFrames = 1323; // 30 ms, below the shortest supported pulse.
+    final samples = <int>[];
+    for (var i = 0; i < clickFrames; i++) {
+      final seconds = i / sampleRate;
+      final attack = 1 - math.exp(-seconds / .00015);
+      final end = ((.030 - seconds) / .003).clamp(0.0, 1.0);
+      final body =
+          .72 *
+              math.sin(2 * math.pi * frequency * seconds) *
+              math.exp(-math.max(0, seconds - .004) / .008) +
+          .29 *
+              math.sin(2 * math.pi * frequency * 1.72 * seconds) *
+              math.exp(-math.max(0, seconds - .002) / .006) +
+          .16 *
+              math.sin(2 * math.pi * frequency * 2.61 * seconds) *
+              math.exp(-seconds / .002);
+      // Each timbre is peak-normalized so the stored peak controls its gain.
+      samples.add((attack * end * body * 32767).round());
+    }
+    final peak = samples.map((v) => v.abs()).reduce(math.max);
+    return [for (final sample in samples) (sample * amplitude / peak).round()];
+  }
+
   Uint8List wav() {
     final bytes = Uint8List(44 + frames * 2);
     final data = ByteData.sublistView(bytes);
@@ -38,19 +67,16 @@ class MetronomeRhythm {
     data.setUint32(40, frames * 2, Endian.little);
     final positions = onsets;
     for (var pulse = 0; pulse < pulseCount; pulse++) {
-      final accent = pulse % (settings.beatsPerBar * settings.subdivision) == 0;
       final beat = pulse % settings.subdivision == 0;
-      final amplitude = accent ? 24000 : (beat ? 14000 : 8000);
-      final frequency = accent ? 1800 : (beat ? 1200 : 900);
-      const clickFrames = 882; // 20ms, shorter than the fastest subdivision.
-      for (var i = 0; i < clickFrames; i++) {
-        final envelope = math.exp(-7 * i / clickFrames) * (1 - i / clickFrames);
-        final sample =
-            (amplitude *
-                    envelope *
-                    math.cos(2 * math.pi * frequency * i / sampleRate))
-                .round();
-        data.setInt16(44 + (positions[pulse] + i) * 2, sample, Endian.little);
+      final firstBeat =
+          pulse % (settings.beatsPerBar * settings.subdivision) == 0;
+      final click = !beat
+          ? _woodblockSubdivision
+          : (settings.accentFirstBeat && firstBeat
+                ? _woodblockAccent
+                : _woodblockBeat);
+      for (var i = 0; i < click.length; i++) {
+        data.setInt16(44 + (positions[pulse] + i) * 2, click[i], Endian.little);
       }
     }
     return bytes;

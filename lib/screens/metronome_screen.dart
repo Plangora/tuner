@@ -172,7 +172,8 @@ class _MetronomeScreenState extends State<MetronomeScreen>
                                 index,
                               ) {
                                 final active = state.playing && index == _beat;
-                                final color = index == 0
+                                final color =
+                                    index == 0 && settings.accentFirstBeat
                                     ? AppColors.magenta
                                     : AppColors.cyan;
                                 return Container(
@@ -345,6 +346,23 @@ class _MetronomeScreenState extends State<MetronomeScreen>
                             ),
                           ),
                         const SizedBox(height: 28),
+                        SwitchListTile.adaptive(
+                          key: const ValueKey('accent-first-beat'),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                          ),
+                          title: const Text('Accent first beat'),
+                          value: settings.accentFirstBeat,
+                          activeTrackColor: AppColors.magenta,
+                          onChanged: _leaving
+                              ? null
+                              : (value) => unawaited(
+                                  _controller.updateSettings(
+                                    settings.copyWith(accentFirstBeat: value),
+                                  ),
+                                ),
+                        ),
+                        const SizedBox(height: 12),
                         Flex(
                           direction: stacked ? Axis.vertical : Axis.horizontal,
                           crossAxisAlignment: CrossAxisAlignment.start,

@@ -73,6 +73,9 @@ Android upload, macOS distribution and public web deployment are skipped.
 Build `1.1.0+7` selects `ios,android`: TestFlight upload and a Google Play
 internal-testing draft. It does not select public App Store/Play production
 rollout, macOS distribution or public web deployment.
+Build `1.1.0+8` selects the same platforms for this beta update; after the
+internal draft is uploaded, promote it to the existing closed Alpha track and
+the `tuner-alpha` tester list. Do not promote it to open testing or production.
 
 ## Version Management
 

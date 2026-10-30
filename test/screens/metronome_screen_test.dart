@@ -78,6 +78,35 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
+  for (final scale in [1.0, 2.0]) {
+    screenTest(
+      'transport remains fully reachable on a small phone at scale $scale',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 568);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await show(tester, scale: scale);
+
+        final toggle = find.byKey(const ValueKey('metronome-toggle'));
+        await tester.ensureVisible(toggle);
+        await tester.pumpAndSettle();
+        final startBounds = tester.getRect(toggle);
+        expect(startBounds.top, greaterThanOrEqualTo(0));
+        expect(startBounds.bottom, lessThanOrEqualTo(568));
+        expect(startBounds.height, greaterThanOrEqualTo(64));
+        expect(tester.takeException(), isNull);
+
+        await tester.tap(toggle);
+        await tester.pumpAndSettle();
+        expect(engine.active, isTrue);
+        final stopBounds = tester.getRect(toggle);
+        expect(stopBounds.top, greaterThanOrEqualTo(0));
+        expect(stopBounds.bottom, lessThanOrEqualTo(568));
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
   screenTest('Start and Stop both have a generous touch target', (
     tester,
   ) async {
@@ -89,6 +118,24 @@ void main() {
     await tester.pump();
     expect(engine.active, isTrue);
     expect(tester.getSize(toggle).height, greaterThanOrEqualTo(64));
+  });
+
+  screenTest('accent toggle defaults on and updates while playing', (
+    tester,
+  ) async {
+    await show(tester);
+    final accent = find.byKey(const ValueKey('accent-first-beat'));
+    await tester.ensureVisible(accent);
+    expect(tester.widget<SwitchListTile>(accent).value, isTrue);
+    await tester.ensureVisible(find.byKey(const ValueKey('metronome-toggle')));
+    await tester.tap(find.byKey(const ValueKey('metronome-toggle')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(accent);
+    await tester.tap(accent);
+    await tester.pumpAndSettle();
+    expect(controller.state.settings.accentFirstBeat, isFalse);
+    expect(engine.applied!.accentFirstBeat, isFalse);
+    expect((controller.repository as FakeSettingsRepository).saved!.accentFirstBeat, isFalse);
   });
 
   for (final scale in [1.0, 2.0]) {

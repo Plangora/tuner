@@ -8,6 +8,7 @@ void main() {
       beatsPerBar: 7,
       subdivision: 3,
       volume: .23,
+      accentFirstBeat: false,
     );
     final json = original.toJson();
     final restored = MetronomeSettings.fromJson(json);
@@ -15,7 +16,21 @@ void main() {
     expect(restored.beatsPerBar, 7);
     expect(restored.subdivision, 3);
     expect(restored.volume, .23);
+    expect(restored.accentFirstBeat, isFalse);
     expect(json.containsKey('playing'), isFalse);
+  });
+  test('old saved settings default to an accented first beat', () {
+    expect(MetronomeSettings().accentFirstBeat, isTrue);
+    expect(
+      MetronomeSettings.fromJson({
+        'version': 1,
+        'bpm': 96,
+        'beatsPerBar': 3,
+        'subdivision': 2,
+        'volume': .5,
+      }).accentFirstBeat,
+      isTrue,
+    );
   });
   test('invalid values are rejected at the model boundary', () {
     expect(() => MetronomeSettings(bpm: 0), throwsArgumentError);

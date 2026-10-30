@@ -5,6 +5,7 @@ class MetronomeSettings {
     this.beatsPerBar = 4,
     this.subdivision = 1,
     this.volume = 0.5,
+    this.accentFirstBeat = true,
   }) {
     if (bpm < 40 || bpm > 240) throw ArgumentError.value(bpm, 'bpm');
     if (beatsPerBar < 1 || beatsPerBar > 12) {
@@ -21,27 +22,32 @@ class MetronomeSettings {
   final int beatsPerBar;
   final int subdivision;
   final double volume;
+  final bool accentFirstBeat;
   MetronomeSettings copyWith({
     int? bpm,
     int? beatsPerBar,
     int? subdivision,
     double? volume,
+    bool? accentFirstBeat,
   }) => MetronomeSettings(
     bpm: bpm ?? this.bpm,
     beatsPerBar: beatsPerBar ?? this.beatsPerBar,
     subdivision: subdivision ?? this.subdivision,
     volume: volume ?? this.volume,
+    accentFirstBeat: accentFirstBeat ?? this.accentFirstBeat,
   );
   bool samePattern(MetronomeSettings other) =>
       bpm == other.bpm &&
       beatsPerBar == other.beatsPerBar &&
-      subdivision == other.subdivision;
+      subdivision == other.subdivision &&
+      accentFirstBeat == other.accentFirstBeat;
   Map<String, Object> toJson() => {
     'version': 1,
     'bpm': bpm,
     'beatsPerBar': beatsPerBar,
     'subdivision': subdivision,
     'volume': volume,
+    'accentFirstBeat': accentFirstBeat,
   };
   static MetronomeSettings fromJson(Object? value) {
     if (value is Map &&
@@ -49,13 +55,16 @@ class MetronomeSettings {
         value['bpm'] is int &&
         value['beatsPerBar'] is int &&
         value['subdivision'] is int &&
-        value['volume'] is num) {
+        value['volume'] is num &&
+        (value['accentFirstBeat'] == null ||
+            value['accentFirstBeat'] is bool)) {
       try {
         return MetronomeSettings(
           bpm: value['bpm'] as int,
           beatsPerBar: value['beatsPerBar'] as int,
           subdivision: value['subdivision'] as int,
           volume: (value['volume'] as num).toDouble(),
+          accentFirstBeat: (value['accentFirstBeat'] as bool?) ?? true,
         );
       } on ArgumentError {
         /* Invalid saved values fall back as a unit. */
@@ -68,7 +77,9 @@ class MetronomeSettings {
   bool operator ==(Object other) =>
       other is MetronomeSettings &&
       samePattern(other) &&
-      volume == other.volume;
+      volume == other.volume &&
+      accentFirstBeat == other.accentFirstBeat;
   @override
-  int get hashCode => Object.hash(bpm, beatsPerBar, subdivision, volume);
+  int get hashCode =>
+      Object.hash(bpm, beatsPerBar, subdivision, volume, accentFirstBeat);
 }

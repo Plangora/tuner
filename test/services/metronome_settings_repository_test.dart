@@ -25,6 +25,7 @@ void main() {
       expect(restored.beatsPerBar, 5);
       expect(restored.subdivision, 4);
       expect(restored.volume, .75);
+      expect(restored.accentFirstBeat, isTrue);
       final prefs = await SharedPreferences.getInstance();
       final saved = jsonDecode(
         prefs.getString(PreferencesMetronomeSettingsRepository.key)!,
@@ -32,6 +33,15 @@ void main() {
       expect(saved.containsKey('playing'), isFalse);
     },
   );
+  test('persisted accent choice survives a new repository instance', () async {
+    await PreferencesMetronomeSettingsRepository().save(
+      MetronomeSettings(accentFirstBeat: false),
+    );
+    expect(
+      (await PreferencesMetronomeSettingsRepository().load()).accentFirstBeat,
+      isFalse,
+    );
+  });
   test(
     'missing, corrupt, wrong-type and invalid data fall back safely',
     () async {
