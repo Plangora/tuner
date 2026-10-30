@@ -56,9 +56,13 @@ class DeviceAudioSessionCoordinator implements AudioSessionCoordinator {
   Future<void> configureCapture() async {
     final session = await _ensureSession();
     await session?.configure(
-      const AudioSessionConfiguration(
-        avAudioSessionCategory: AVAudioSessionCategory.record,
-        avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.none,
+      AudioSessionConfiguration(
+        // The tuner is the launch screen: it must also preserve other music
+        // before the user opens the metronome or returns to tuning.
+        avAudioSessionCategory: AVAudioSessionCategory.playAndRecord,
+        avAudioSessionCategoryOptions:
+            AVAudioSessionCategoryOptions.mixWithOthers |
+            AVAudioSessionCategoryOptions.defaultToSpeaker,
         avAudioSessionMode: AVAudioSessionMode.defaultMode,
       ),
     );
@@ -75,8 +79,9 @@ class DeviceAudioSessionCoordinator implements AudioSessionCoordinator {
     await session?.configure(
       const AudioSessionConfiguration(
         avAudioSessionCategory: AVAudioSessionCategory.playback,
-        // A mixing iOS session cannot become the Now Playing session.
-        avAudioSessionCategoryOptions: AVAudioSessionCategoryOptions.none,
+        // Keep the song's audio and system media controls with its own app.
+        avAudioSessionCategoryOptions:
+            AVAudioSessionCategoryOptions.mixWithOthers,
         androidAudioAttributes: AndroidAudioAttributes(
           contentType: AndroidAudioContentType.music,
           usage: AndroidAudioUsage.media,

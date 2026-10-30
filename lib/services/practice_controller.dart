@@ -258,10 +258,16 @@ class PracticeController extends ChangeNotifier {
         );
       }
       _publish(status: TransportStatus.starting, clearError: true);
-      await engine.initialize();
-      if (_closed || epoch != _playEpoch) return;
+      // SoLoud opens its output device during initialize(). On iOS it leaves
+      // AVAudioSession policy to us, so prepare the playback category and
+      // activate it before attempting to open native output.
       await session.configurePlayback();
       await session.activatePlayback();
+      if (_closed || epoch != _playEpoch) {
+        await session.deactivate();
+        return;
+      }
+      await engine.initialize();
       if (_closed || epoch != _playEpoch) {
         await session.deactivate();
         return;

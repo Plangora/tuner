@@ -1,5 +1,171 @@
 # Metronome implementation and validation — 2026-10-29
 
+## Current iPhone mixing policy — 2026-10-30
+
+The human subsequently prioritised playing a song and the metronome together.
+Metronome media controls on the iPhone lock screen/Control Center are intentionally
+absent; their absence is no longer a failure or release blocker.
+
+- Playback uses `playback` with `mixWithOthers` (native option mask 1), without
+  `duckOthers`. Tuner capture also mixes: `playAndRecord` with `mixWithOthers`
+  and `defaultToSpeaker` (mask 9). This preserves an existing song during the
+  default tuner launch and return from the metronome, without routing built-in
+  playback to the receiver. The native startup-order correction is retained.
+- The iPhone runtime does not initialize `audio_service` or publish a media
+  handler/Now Playing metadata. The pinned plugin only activates its command
+  center when its handler publishes a playing state; skipping that handler
+  avoids competing with the song's metadata/commands. iOS background ticking
+  uses its existing native loop and `UIBackgroundModes: audio`. Android's
+  required foreground media service and macOS controls remain unchanged.
+- Both new regression tests failed against the earlier policy. All 68 tests
+  now pass, analysis is clean, and the iOS release build passes (18.5 MB).
+- Physical release/AOT check on the same iPhone 17 Pro Max/iOS 27.2 uses the
+  actual `PracticeRuntime`, including its lack of an iPhone media handler.
+  Initial/repeated playback and tuner microphone restoration pass; native
+  category/option masks match the configuration above.
+- A temporary independent native app plays a locally generated melody under
+  a normal non-mixing playback session and publishes its own music metadata.
+  No account/purchase was required and no device-volume setting was changed.
+  Its initial test-fixture failure was an iOS scene-lifecycle adoption trap;
+  the fixture was corrected without any additional Tuner change.
+- **Metronome then melody:** from 04:29:27 UTC, both independent playback
+  positions advance and both apps report `isOtherAudioPlaying: true`, with
+  the metronome backgrounded and no transport error.
+- **Melody then Tuner:** cold launch at 04:30:05 UTC preserves the melody
+  through tuner capture, first metronome Start, repeated Start/Stop, microphone
+  restoration and metronome reentry. Other-audio flags stay true in capture and
+  playback; the independent player records no interruption and stays playing.
+  These are native concurrency observations, not yet a listening confirmation
+  with the user's chosen music app.
+
+At 04:36:02 UTC the human replied "confirm" to the explicit request to lock the
+phone and confirm that both the temporary melody and metronome remain audible.
+**Simultaneous audible playback while locked: passed by human observation.**
+This is distinct from the independent native-position/other-audio evidence.
+The source is a controlled local melody, not a test of a named third-party music
+app or a calibrated audio/endurance measurement.
+
+After that confirmation, both identified diagnostic processes were terminated.
+The normal release build from `lib/main.dart`, `com.plangora.tuner` version
+`1.1.0+6`, was installed and launched without uninstalling or clearing data.
+Its installed app URL and running executable identify the normal production
+artifact. The AOT artifact has no diagnostic log markers. The temporary media
+fixture, `com.plangora.tuner.mixingMediaTest`, remains installed but stopped;
+it was not deleted. Project signing configuration remains unchanged.
+Raw logs: `/tmp/tuner-phone-mixing-results.jsonl` and
+`/tmp/tuner-mixing-media-results.jsonl`. No push or publication occurred.
+
+## iPhone startup investigation — 2026-10-30
+
+The supplied TestFlight screenshot shows `SoLoudBackendNotInitedException:
+The player is not initialized (on the C++ side)` after Start, with Retry at
+94 BPM. The screenshot was downloaded from the supplied Library reference and
+visually inspected. The human reports that development debug mode did not show
+the failure.
+
+Confirmed code defect: `PracticeController.start()` initialized SoLoud before
+configuring and activating playback. After tuner capture, the iOS session was
+left in `AVAudioSessionCategory.record`, then deactivated by `enterMetronome()`.
+The pinned `flutter_soloud 5.2.2` native backend explicitly disables automatic
+audio-session category changes and activation. Its `Player::init()` opens the
+output device immediately and maps backend initialization failure to the exact
+exception shown. The correction configures and activates playback first, with
+cancellation cleanup after native initialization. A failed initialization still
+releases the session, and explicit Retry repeats session preparation.
+
+This was initially a hypothesis; the physical release-mode comparison below
+now reproduces the exact exception with the original order and passes with the
+corrected order. The unchanged app successfully started native playback
+on an iPhone 18 Pro / iOS 27.0 simulator after real tuner capture. That simulator
+result cannot validate physical-device audio-session restrictions. There is no
+debug/release branch in this controller or its audio-session policy; the debug
+binding adds Marionette diagnostics. Clicks are generated PCM in memory, rather
+than a release-prunable bundled sound asset. Prior integrated runtime validation
+was on macOS; the earlier physical iPhone release probe had no recording/tuner
+handoff. Those tests did not cover the failing production transition. The exact
+reason the human's development run differed remains unverified.
+
+Regression coverage checks session readiness at native initialization, denied
+activation, native initialization failure followed by Retry, leaving during
+initialization, repeated Start, interruption, tuner navigation, and
+background/resume transport behavior. These use fakes and establish controller
+ownership/order, not actual iPhone output. A local unsigned iOS release build
+passes with the correction; compilation is not a device playback result.
+
+At the initial investigation no physical iPhone was connected. The later USB
+validation below closes the startup-reproduction and release-device transport
+gates. Specific lock-screen audio, tempo
+edits in release, and a same-device debug comparison remain unrecorded for this
+run. No store upload, release tag or persistent signing change is part of this
+correction. Build 6 is local Unreleased metadata only.
+
+Final local verification: all 66 Flutter tests pass, analysis reports no issues,
+and `flutter build ios --release --no-codesign --no-pub` passes (19.0 MB app).
+The final iPhone 18 Pro / iOS 27.0 debug simulator run passed three Start/Stop
+cycles at 94 BPM with advancing native positions, tuner microphone restoration,
+reentry and playback, switching to Settings while playing, foreground resume,
+and Stop after resume. Initial smoke-driver runs raced asynchronous button and
+navigation rendering; waiting for enabled controls, microphone readiness and
+the destination screen resolved those driver failures. These are transport and
+native-position observations, not audible or physical release validation.
+
+The separately requested Tap tempo refinement fills the control width, with a
+72-logical-pixel minimum height, 32-pixel icon and larger label. Widget checks
+cover a 320×568 screen at normal and double-size text and a tap near the button
+edge. The existing small-screen overflow check also passes. An actual rendered
+screen was captured through the app's Marionette screenshot API on that debug
+simulator and visually checked; the simulator's system screenshot surface was
+blank/stale, so it was not used as the deliverable. Screenshot Library ID:
+`libfile_ebf96e13c0888191ac40d9d6a526638a`.
+
+### Physical release comparison after USB connection
+
+Device: iPhone 17 Pro Max, iOS 27.2 (24B119). Tuner `1.1.0+5` was initially
+installed. Both diagnostic variants were compiled in release/AOT mode as local
+build `1.1.0+6`, using the same production controller, capture, session, engine,
+and background handler. A temporary entry point automated controller commands
+and logged the native category/initialization result. It read saved settings
+but suppressed all settings writes. No uninstall or app-data clearing occurred.
+
+- Original order, 04:03:47 UTC: actual tuner capture was active with category
+  `record`. Native initialization ran under `record` and returned
+  `SoLoudBackendNotInitedException`; Start and Retry both failed. The stack
+  reaches `SoLoud._initialize`, `SoloudMetronomeEngine.initialize`, then
+  `PracticeController.start`. The wrapper exposes `backendNotInited`; the
+  underlying miniaudio/AudioUnit OSStatus is not exposed by this log.
+- Corrected order, first launch 04:04:48 UTC: native initialization ran under
+  `playback`, succeeded, and generated advancing native playback positions at
+  94 BPM. Three Start/Stop cycles and tuner microphone restoration/reentry
+  passed. Four additional cold launches, including a three-launch batch, passed
+  the same sequence. This is five successful corrected release launches.
+- The human's 04:04:17 UTC report of the same error preceded the corrected
+  variant's launch; the phone was still running the deliberately original-order
+  baseline. The 04:05:04 and 04:09:14 UTC reports that it was working align with
+  corrected release runs. These observations support playback but do not
+  independently establish lock-screen/system-control coverage.
+- App switching: launching Settings produced `hidden`/`paused` at 04:09:54 UTC.
+  The engine stayed initialized, native positions advanced and transport stayed
+  playing. Returning at 04:10:16 UTC produced `resumed`; playback stayed healthy.
+- A separate first-run pause at 04:05:17 UTC reported `Audio route changed. Tap
+  Start to resume.`, with the engine still initialized. The actual route change
+  was not captured, so its cause is not inferred. It differs from the startup
+  exception; subsequent cold-launch and background/resume runs passed without
+  that error. No extra production fix was added for this event.
+
+An existing Apple Development certificate and already-installed wildcard profile
+covering this phone signed temporary app copies. Xcode initially rejected that
+Xcode-managed profile under manual App Store build settings; those temporary
+settings were restored. Subsequent unsigned builds were signed locally without
+creating credentials/profiles or changing project signing configuration.
+
+After testing, the normal `lib/main.dart` release app was installed and launched
+as `com.plangora.tuner`, build 6. The diagnostic entry point is no longer
+installed. Saved data was preserved. All 66 automated tests pass after restoring
+the production sources. The compact device evidence is retained in
+[`metronome-startup-device-evidence.json`](metronome-startup-device-evidence.json).
+Raw local logs are `/tmp/tuner-phone-{original,fixed}-results.jsonl`; the
+temporary harness is `/tmp/tuner_device_probe.dart`.
+
 Status: Production integration is implemented in the existing dark/neon style. Initial integrated functional checks use macOS, as approved by the human. Earlier physical iPhone/Samsung feasibility checks passed for background playback and system controls. Calibrated timing and the broader release matrix remain outstanding.
 
 ## Production integration

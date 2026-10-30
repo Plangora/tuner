@@ -91,6 +91,28 @@ void main() {
     expect(tester.getSize(toggle).height, greaterThanOrEqualTo(64));
   });
 
+  for (final scale in [1.0, 2.0]) {
+    screenTest(
+      'Tap tempo is finger friendly on a small phone at scale $scale',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 568);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await show(tester, scale: scale, platform: TargetPlatform.iOS);
+        final tapTempo = find.byKey(const ValueKey('tap-tempo'));
+        await tester.ensureVisible(tapTempo);
+        final bounds = tester.getRect(tapTempo);
+        expect(bounds.height, greaterThanOrEqualTo(72));
+        expect(bounds.width, 272); // Full control width minus screen padding.
+        await tester.tapAt(Offset(bounds.left + 12, bounds.center.dy));
+        await tester.pump();
+        expect(find.text('Tap again to set tempo'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   screenTest('unsupported playback is explained and cannot start an engine', (
     tester,
   ) async {

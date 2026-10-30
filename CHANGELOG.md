@@ -14,6 +14,19 @@ verified store publication dates. The original `v1.0.0` tag points to
 `1.0.0+2`; later tags include the build number. Versions below follow
 release chronology, including the return from `1.0.1+3` to `1.0.0+4`.
 
+## [1.1.0+6] - 2026-10-30
+
+### Changed
+
+- Tap tempo fills the control width with a taller touch target and larger
+  label and icon, making it easier to tap with a finger.
+- On iPhone, the tuner and metronome mix with audio from other apps. Metronome
+  controls stay in the app, leaving system media controls to the music app.
+
+### Fixed
+
+- Fixed the metronome failing to start after using the tuner on iPhone.
+
 ## [1.1.0+5] - 2026-10-29
 
 ### Added

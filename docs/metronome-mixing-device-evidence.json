@@ -1,0 +1,225 @@
+{
+  "device": "iPhone 17 Pro Max / iOS 27.2 (24B119)",
+  "mode": "release/AOT",
+  "metronomeFirst": {
+    "time": "2026-10-30T04:29:27.121165Z",
+    "build": "mixing",
+    "event": "heartbeat",
+    "mode": "metronome",
+    "transport": "playing",
+    "captureActive": false,
+    "positionUs": 3947392,
+    "error": null,
+    "category": "playback",
+    "nativeInitialized": true,
+    "categoryOptions": 1,
+    "otherAudioPlaying": true,
+    "outputs": [
+      "builtInSpeaker"
+    ]
+  },
+  "musicFirst": [
+    {
+      "time": "2026-10-30T04:30:05.209977Z",
+      "build": "mixing",
+      "event": "launch",
+      "releaseMode": true
+    },
+    {
+      "time": "2026-10-30T04:30:05.210408Z",
+      "build": "mixing",
+      "event": "production_runtime",
+      "unavailableReason": null
+    },
+    {
+      "time": "2026-10-30T04:30:05.435004Z",
+      "build": "mixing",
+      "event": "tuner_capture",
+      "mode": "tuner",
+      "transport": "stopped",
+      "captureActive": true,
+      "positionUs": null,
+      "error": null,
+      "category": "playAndRecord",
+      "nativeInitialized": false,
+      "categoryOptions": 9,
+      "otherAudioPlaying": true,
+      "outputs": [
+        "builtInSpeaker"
+      ]
+    },
+    {
+      "time": "2026-10-30T04:30:06.237019Z",
+      "build": "mixing",
+      "event": "first_start",
+      "mode": "metronome",
+      "transport": "playing",
+      "captureActive": false,
+      "positionUs": 0,
+      "error": null,
+      "category": "playback",
+      "nativeInitialized": true,
+      "categoryOptions": 1,
+      "otherAudioPlaying": true,
+      "outputs": [
+        "builtInSpeaker"
+      ]
+    },
+    {
+      "time": "2026-10-30T04:30:08.085251Z",
+      "build": "mixing",
+      "event": "tuner_restored",
+      "mode": "tuner",
+      "transport": "stopped",
+      "captureActive": true,
+      "positionUs": null,
+      "error": null,
+      "category": "playAndRecord",
+      "nativeInitialized": true,
+      "categoryOptions": 9,
+      "otherAudioPlaying": true,
+      "outputs": [
+        "builtInSpeaker"
+      ]
+    },
+    {
+      "time": "2026-10-30T04:30:08.847645Z",
+      "build": "mixing",
+      "event": "play_after_tuner",
+      "mode": "metronome",
+      "transport": "playing",
+      "captureActive": false,
+      "positionUs": 0,
+      "error": null,
+      "category": "playback",
+      "nativeInitialized": true,
+      "categoryOptions": 1,
+      "otherAudioPlaying": true,
+      "outputs": [
+        "builtInSpeaker"
+      ]
+    },
+    {
+      "time": "2026-10-30T04:30:08.848201Z",
+      "build": "mixing",
+      "event": "AUTOMATED_CHECKS_PASSED"
+    }
+  ],
+  "independentSource": "Temporary native generated-melody app, AVAudioPlayer, non-mixing playback session",
+  "sourceRecent": [
+    {
+      "time": "2026-10-30T04:30:32Z",
+      "position": 1.9296598639455782,
+      "event": "heartbeat",
+      "playing": true,
+      "otherAudioPlaying": true
+    },
+    {
+      "time": "2026-10-30T04:30:33Z",
+      "position": 2.925487528344671,
+      "event": "heartbeat",
+      "playing": true,
+      "otherAudioPlaying": true
+    },
+    {
+      "time": "2026-10-30T04:30:34Z",
+      "position": 3.926780045351474,
+      "event": "heartbeat",
+      "playing": true,
+      "otherAudioPlaying": true
+    },
+    {
+      "time": "2026-10-30T04:30:35Z",
+      "position": 4.92625850340136,
+      "event": "heartbeat",
+      "playing": true,
+      "otherAudioPlaying": true
+    }
+  ],
+  "sourceInterruptions": [],
+  "tests": 68,
+  "analysis": "No issues",
+  "humanListeningAndLockContinuity": {
+    "status": "passed by human observation",
+    "promptTimeUtc": "2026-10-30T04:32:35Z",
+    "prompt": "A temporary test melody and the metronome are currently playing on your iPhone. Please lock it and confirm that you can still hear both. After that check, I will restore the normal updated app.",
+    "replyTimeUtc": "2026-10-30T04:36:02Z",
+    "reply": "confirm"
+  },
+  "deviceVolumeChanged": false,
+  "tunerDataCleared": false,
+  "systemMetronomeControls": "intentionally absent; no iPhone audio_service handler",
+  "installedTunerEntryPoint": "lib/main.dart; normal production release app installed and launched after listening check",
+  "normalReleaseReady": "/tmp/tuner-phone-production.app",
+  "finalInstalled": {
+    "bundleIdentifier": "com.plangora.tuner",
+    "version": "1.1.0",
+    "build": "6",
+    "diagnosticEntryPointInstalled": false
+  },
+  "temporaryMediaFixture": {
+    "bundleIdentifier": "com.plangora.tuner.mixingMediaTest",
+    "installed": true,
+    "running": false,
+    "deleted": false
+  },
+  "temporaryDiagnosticProcessRunning": false,
+  "remainingLimits": [
+    "Controlled local melody source; no named third-party music app result recorded.",
+    "No calibrated timing or long endurance measurement in this check."
+  ],
+  "finalNativeObservations": {
+    "metronome": [
+      {
+        "time": "2026-10-30T04:36:53.854903Z",
+        "build": "mixing",
+        "event": "heartbeat",
+        "mode": "metronome",
+        "transport": "playing",
+        "captureActive": false,
+        "positionUs": 975238,
+        "error": null,
+        "category": "playback",
+        "nativeInitialized": true,
+        "categoryOptions": 1,
+        "otherAudioPlaying": true,
+        "outputs": [
+          "builtInSpeaker"
+        ]
+      },
+      {
+        "time": "2026-10-30T04:36:56.854226Z",
+        "build": "mixing",
+        "event": "heartbeat",
+        "mode": "metronome",
+        "transport": "playing",
+        "captureActive": false,
+        "positionUs": 0,
+        "error": null,
+        "category": "playback",
+        "nativeInitialized": true,
+        "categoryOptions": 1,
+        "otherAudioPlaying": true,
+        "outputs": [
+          "builtInSpeaker"
+        ]
+      }
+    ],
+    "independentMedia": [
+      {
+        "time": "2026-10-30T04:36:56Z",
+        "position": 1.93421768707483,
+        "event": "heartbeat",
+        "playing": true,
+        "otherAudioPlaying": true
+      },
+      {
+        "time": "2026-10-30T04:36:57Z",
+        "position": 2.9320861678004535,
+        "event": "heartbeat",
+        "playing": true,
+        "otherAudioPlaying": true
+      }
+    ]
+  }
+}

@@ -11,6 +11,7 @@ class FakeEngine implements MetronomeEngine {
   final List<String> trace;
   final events = StreamController<MetronomeEngineStatus>.broadcast();
   Completer<void>? startGate;
+  Future<void> Function()? onInitialize;
   Completer<void>? stopGate;
   bool failStart = false;
   bool failStop = false;
@@ -26,6 +27,7 @@ class FakeEngine implements MetronomeEngine {
   @override
   Future<void> initialize() async {
     trace.add('engine.initialize');
+    await onInitialize?.call();
   }
 
   @override
@@ -102,26 +104,34 @@ class FakeSession implements AudioSessionCoordinator {
   FakeSession(this.trace);
   final List<String> trace;
   final controller = StreamController<PracticeAudioEvent>.broadcast();
+  bool playbackConfigured = false;
+  bool playbackActive = false;
+  bool denyPlayback = false;
   @override
   Stream<PracticeAudioEvent> get events => controller.stream;
   @override
   Future<void> configureCapture() async {
     trace.add('session.capture');
+    playbackConfigured = false;
   }
 
   @override
   Future<void> configurePlayback() async {
     trace.add('session.playback');
+    playbackConfigured = true;
   }
 
   @override
   Future<void> activatePlayback() async {
     trace.add('session.activate');
+    if (denyPlayback) throw StateError('Audio focus denied');
+    playbackActive = playbackConfigured;
   }
 
   @override
   Future<void> deactivate() async {
     trace.add('session.deactivate');
+    playbackActive = false;
   }
 
   @override

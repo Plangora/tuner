@@ -80,6 +80,79 @@ void main() {
     expect(controller.state.playing, isTrue);
   });
   test(
+    'native initialization has an active playback session after tuner',
+    () async {
+      // iOS cannot open an output AudioUnit under the tuner's record category.
+      engine.onInitialize = () async {
+        if (!session.playbackActive) {
+          throw StateError('Playback session was not ready for native output');
+        }
+      };
+      await controller.enterTuner();
+      await controller.enterMetronome();
+      await controller.start();
+      expect(controller.state.error, isNull);
+      expect(controller.state.playing, isTrue);
+    },
+  );
+  test(
+    'denied playback session never opens native output and can retry',
+    () async {
+      await controller.enterMetronome();
+      session.denyPlayback = true;
+      await controller.start();
+      expect(controller.state.error, contains('Audio focus denied'));
+      expect(session.playbackActive, isFalse);
+      expect(trace, isNot(contains('engine.initialize')));
+      session.denyPlayback = false;
+      await controller.start();
+      expect(controller.state.playing, isTrue);
+      expect(session.playbackActive, isTrue);
+    },
+  );
+  test(
+    'failed native initialization releases the session and Retry works',
+    () async {
+      engine.onInitialize = () async =>
+          throw StateError('Native output failed');
+      await controller.enterMetronome();
+      await controller.start();
+      expect(controller.state.playing, isFalse);
+      expect(controller.state.error, contains('Native output failed'));
+      expect(trace.last, 'session.deactivate');
+      engine.onInitialize = null;
+      trace.clear();
+      await controller.start();
+      expect(controller.state.error, isNull);
+      expect(controller.state.playing, isTrue);
+      expect(
+        trace.indexOf('session.activate'),
+        lessThan(trace.indexOf('engine.initialize')),
+      );
+    },
+  );
+  test(
+    'leaving during native initialization releases playback before capture',
+    () async {
+      final initialized = Completer<void>();
+      engine.onInitialize = () => initialized.future;
+      await controller.enterMetronome();
+      final play = controller.start();
+      await Future<void>.delayed(Duration.zero);
+      final tuner = controller.enterTuner();
+      initialized.complete();
+      await Future.wait([play, tuner]);
+      expect(engine.starts, 0);
+      expect(capture.active, isTrue);
+      expect(controller.state.error, isNull);
+      expect(controller.state.mode, PracticeMode.tuner);
+      expect(
+        trace.lastIndexOf('session.deactivate'),
+        lessThan(trace.lastIndexOf('session.capture')),
+      );
+    },
+  );
+  test(
     'stop during pending engine start prevents a stale playing state',
     () async {
       await controller.enterMetronome();
@@ -201,6 +274,10 @@ void main() {
     await controller.start();
     await controller.setForeground(false);
     expect(engine.active, isTrue);
+    await controller.setForeground(true);
+    expect(controller.state.playing, isTrue);
+    expect(engine.starts, 1);
+    expect(session.playbackActive, isTrue);
   });
   test(
     'restoring settings never starts playback and latest edits persist',

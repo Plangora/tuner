@@ -65,6 +65,12 @@ The release workflow can be triggered:
 
 All outputs are available as **GitHub Actions artifacts** for 30 days.
 
+To restrict a release to particular platforms, add a file named with the full
+version/build under `.github/release-targets/`, containing a comma-separated
+selection of `ios`, `android`, `macos` and/or `web`. Without a file, all four
+platforms run as before. Build `1.1.0+6` selects only `ios` for TestFlight;
+Android upload, macOS distribution and public web deployment are skipped.
+
 ## Version Management
 
 Update version in **one place**:
@@ -195,7 +201,16 @@ Use the project-local asdf pin, Flutter `3.47.8-stable` (`asdf exec flutter --ve
 
 The tuner remains the launch screen. Its app-bar timer action opens the separate metronome. Returning stops clicks before restoring the microphone. Settings persist; audible playback never restores automatically. Tempo/pattern changes restart the bar, while volume changes apply without restarting.
 
-Native metronome/background controls are enabled on iOS, Android and macOS. iOS uses non-mixing playback for Now Playing eligibility, so it can pause other music. Android declares the media-playback foreground service/media receiver and retains the dynamically resolved play/pause/stop drawables with `res/raw/metronome_keep.xml`; verify those resources in shrunk release APKs. No battery-optimization exemption is requested. Web/Windows/Linux retain tuner access and show explicit metronome unavailability; Windows/Linux native builds still require their own platform checks.
+Native metronome playback is enabled on iOS, Android and macOS. iOS uses mixing
+sessions for both tuner capture and metronome playback, with native background
+audio and in-app transport controls. It does not initialize a system media
+handler, leaving Now Playing metadata and commands to the user's music app.
+Android retains system transport controls and its required media-playback
+foreground service/media receiver, plus the dynamically resolved play/pause/stop
+drawables in `res/raw/metronome_keep.xml`; verify those resources in shrunk
+release APKs. macOS retains its system controls. No battery-optimization exemption
+is requested. Web/Windows/Linux retain tuner access and show explicit metronome
+unavailability; Windows/Linux native builds still require their own checks.
 
 The audio buffer is generated locally and repeats natively, with no per-beat Dart calls. Optional external Xiph libraries are disabled through the SoLoud build hook. Native component notices are bundled in `assets/licenses/metronome-audio.txt` and registered with Flutter's license registry.
 

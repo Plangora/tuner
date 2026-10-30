@@ -300,9 +300,22 @@ class _MetronomeScreenState extends State<MetronomeScreen>
                               ? null
                               : (value) => _tempo(value.round()),
                         ),
-                        Center(
+                        SizedBox(
+                          width: double.infinity,
                           child: ElevatedButton.icon(
                             key: const ValueKey('tap-tempo'),
+                            style: ElevatedButton.styleFrom(
+                              visualDensity: VisualDensity.standard,
+                              minimumSize: const Size.fromHeight(72),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 20,
+                              ),
+                              textStyle: text.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                              iconSize: 32,
+                            ),
                             onPressed: _leaving
                                 ? null
                                 : () {

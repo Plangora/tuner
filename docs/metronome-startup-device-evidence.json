@@ -1,0 +1,346 @@
+{
+  "device": {
+    "model": "iPhone 17 Pro Max",
+    "os": "iOS 27.2 (24B119)"
+  },
+  "build": "1.1.0+6",
+  "testMode": "release (AOT), existing local development signing",
+  "initialInstalledBuild": "1.1.0+5",
+  "originalOrder": [
+    {
+      "time": "2026-10-30T04:03:46.529869Z",
+      "event": "launch",
+      "releaseMode": true
+    },
+    {
+      "time": "2026-10-30T04:03:46.703198Z",
+      "event": "tuner_capture",
+      "mode": "tuner",
+      "transport": "stopped",
+      "captureActive": true,
+      "positionUs": null,
+      "error": null,
+      "category": "record",
+      "nativeInitialized": false
+    },
+    {
+      "time": "2026-10-30T04:03:46.803372Z",
+      "event": "lifecycle",
+      "state": "resumed"
+    },
+    {
+      "time": "2026-10-30T04:03:47.356212Z",
+      "event": "native_init_begin",
+      "category": "record"
+    },
+    {
+      "time": "2026-10-30T04:03:47.402417Z",
+      "event": "native_init_failed",
+      "error": "SoLoudBackendNotInitedException: The player is not initialized (on the C++ side)."
+    },
+    {
+      "time": "2026-10-30T04:03:47.432544Z",
+      "event": "first_start",
+      "mode": "metronome",
+      "transport": "stopped",
+      "captureActive": false,
+      "positionUs": null,
+      "error": "SoLoudBackendNotInitedException: The player is not initialized (on the C++ side).",
+      "category": "record",
+      "nativeInitialized": false
+    },
+    {
+      "time": "2026-10-30T04:03:47.433211Z",
+      "event": "native_init_begin",
+      "category": "record"
+    },
+    {
+      "time": "2026-10-30T04:03:47.463066Z",
+      "event": "native_init_failed",
+      "error": "SoLoudBackendNotInitedException: The player is not initialized (on the C++ side)."
+    },
+    {
+      "time": "2026-10-30T04:03:47.491623Z",
+      "event": "retry",
+      "mode": "metronome",
+      "transport": "stopped",
+      "captureActive": false,
+      "positionUs": null,
+      "error": "SoLoudBackendNotInitedException: The player is not initialized (on the C++ side).",
+      "category": "record",
+      "nativeInitialized": false
+    },
+    {
+      "time": "2026-10-30T04:03:47.491918Z",
+      "event": "CHECK_FAILED",
+      "error": "Bad state: Playback failed: SoLoudBackendNotInitedException: The player is not initialized (on the C++ side)."
+    }
+  ],
+  "correctedOrderRuns": [
+    {
+      "launch": "2026-10-30T04:04:48.552859Z",
+      "releaseMode": true,
+      "nativeInitCategories": [
+        "playback",
+        "playback",
+        "playback",
+        "playback",
+        "playback"
+      ],
+      "checksPassed": true,
+      "captureRestored": true
+    },
+    {
+      "launch": "2026-10-30T04:08:15.038867Z",
+      "releaseMode": true,
+      "nativeInitCategories": [
+        "playback",
+        "playback",
+        "playback",
+        "playback",
+        "playback",
+        "playback",
+        "playback"
+      ],
+      "checksPassed": true,
+      "captureRestored": true
+    },
+    {
+      "launch": "2026-10-30T04:09:13.214326Z",
+      "releaseMode": true,
+      "nativeInitCategories": [
+        "playback",
+        "playback",
+        "playback",
+        "playback",
+        "playback"
+      ],
+      "checksPassed": true,
+      "captureRestored": true
+    },
+    {
+      "launch": "2026-10-30T04:09:17.876652Z",
+      "releaseMode": true,
+      "nativeInitCategories": [
+        "playback",
+        "playback",
+        "playback",
+        "playback",
+        "playback"
+      ],
+      "checksPassed": true,
+      "captureRestored": true
+    },
+    {
+      "launch": "2026-10-30T04:09:22.597677Z",
+      "releaseMode": true,
+      "nativeInitCategories": [
+        "playback",
+        "playback",
+        "playback",
+        "playback",
+        "playback"
+      ],
+      "checksPassed": true,
+      "captureRestored": true
+    }
+  ],
+  "backgroundResume": [
+    {
+      "time": "2026-10-30T04:09:53.306042Z",
+      "event": "lifecycle",
+      "state": "inactive"
+    },
+    {
+      "time": "2026-10-30T04:09:53.395004Z",
+      "event": "heartbeat",
+      "mode": "metronome",
+      "transport": "playing",
+      "captureActive": false,
+      "positionUs": 882358,
+      "error": null,
+      "category": "playback",
+      "nativeInitialized": true
+    },
+    {
+      "time": "2026-10-30T04:09:54.137485Z",
+      "event": "lifecycle",
+      "state": "hidden"
+    },
+    {
+      "time": "2026-10-30T04:09:54.138084Z",
+      "event": "lifecycle",
+      "state": "paused"
+    },
+    {
+      "time": "2026-10-30T04:09:56.395869Z",
+      "event": "heartbeat",
+      "mode": "metronome",
+      "transport": "playing",
+      "captureActive": false,
+      "positionUs": 3900952,
+      "error": null,
+      "category": "playback",
+      "nativeInitialized": true
+    },
+    {
+      "time": "2026-10-30T04:09:59.395489Z",
+      "event": "heartbeat",
+      "mode": "metronome",
+      "transport": "playing",
+      "captureActive": false,
+      "positionUs": 1811156,
+      "error": null,
+      "category": "playback",
+      "nativeInitialized": true
+    },
+    {
+      "time": "2026-10-30T04:10:02.395904Z",
+      "event": "heartbeat",
+      "mode": "metronome",
+      "transport": "playing",
+      "captureActive": false,
+      "positionUs": 4783311,
+      "error": null,
+      "category": "playback",
+      "nativeInitialized": true
+    },
+    {
+      "time": "2026-10-30T04:10:05.395407Z",
+      "event": "heartbeat",
+      "mode": "metronome",
+      "transport": "playing",
+      "captureActive": false,
+      "positionUs": 2693515,
+      "error": null,
+      "category": "playback",
+      "nativeInitialized": true
+    },
+    {
+      "time": "2026-10-30T04:10:08.395509Z",
+      "event": "heartbeat",
+      "mode": "metronome",
+      "transport": "playing",
+      "captureActive": false,
+      "positionUs": 603719,
+      "error": null,
+      "category": "playback",
+      "nativeInitialized": true
+    },
+    {
+      "time": "2026-10-30T04:10:11.396185Z",
+      "event": "heartbeat",
+      "mode": "metronome",
+      "transport": "playing",
+      "captureActive": false,
+      "positionUs": 3575873,
+      "error": null,
+      "category": "playback",
+      "nativeInitialized": true
+    },
+    {
+      "time": "2026-10-30T04:10:14.395510Z",
+      "event": "heartbeat",
+      "mode": "metronome",
+      "transport": "playing",
+      "captureActive": false,
+      "positionUs": 1486077,
+      "error": null,
+      "category": "playback",
+      "nativeInitialized": true
+    },
+    {
+      "time": "2026-10-30T04:10:15.594835Z",
+      "event": "lifecycle",
+      "state": "hidden"
+    },
+    {
+      "time": "2026-10-30T04:10:15.595232Z",
+      "event": "lifecycle",
+      "state": "inactive"
+    },
+    {
+      "time": "2026-10-30T04:10:16.038926Z",
+      "event": "lifecycle",
+      "state": "resumed"
+    },
+    {
+      "time": "2026-10-30T04:10:17.396233Z",
+      "event": "heartbeat",
+      "mode": "metronome",
+      "transport": "playing",
+      "captureActive": false,
+      "positionUs": 4458231,
+      "error": null,
+      "category": "playback",
+      "nativeInitialized": true
+    },
+    {
+      "time": "2026-10-30T04:10:20.395749Z",
+      "event": "heartbeat",
+      "mode": "metronome",
+      "transport": "playing",
+      "captureActive": false,
+      "positionUs": 2368435,
+      "error": null,
+      "category": "playback",
+      "nativeInitialized": true
+    },
+    {
+      "time": "2026-10-30T04:10:23.395136Z",
+      "event": "heartbeat",
+      "mode": "metronome",
+      "transport": "playing",
+      "captureActive": false,
+      "positionUs": 278639,
+      "error": null,
+      "category": "playback",
+      "nativeInitialized": true
+    },
+    {
+      "time": "2026-10-30T04:10:26.396193Z",
+      "event": "heartbeat",
+      "mode": "metronome",
+      "transport": "playing",
+      "captureActive": false,
+      "positionUs": 3250794,
+      "error": null,
+      "category": "playback",
+      "nativeInitialized": true
+    },
+    {
+      "time": "2026-10-30T04:10:29.396154Z",
+      "event": "heartbeat",
+      "mode": "metronome",
+      "transport": "playing",
+      "captureActive": false,
+      "positionUs": 1160998,
+      "error": null,
+      "category": "playback",
+      "nativeInitialized": true
+    }
+  ],
+  "separateRouteChangePause": {
+    "time": "2026-10-30T04:05:17.082015Z",
+    "event": "heartbeat",
+    "mode": "metronome",
+    "transport": "stopped",
+    "captureActive": false,
+    "positionUs": null,
+    "error": "Audio route changed. Tap Start to resume.",
+    "category": "playback",
+    "nativeInitialized": true
+  },
+  "finalInstalled": {
+    "bundleIdentifier": "com.plangora.tuner",
+    "version": "1.1.0",
+    "build": "6",
+    "entryPoint": "lib/main.dart",
+    "diagnosticEntryPointInstalled": false
+  },
+  "limits": [
+    "No specific lock-screen or Control Center confirmation received for this run.",
+    "No same-device original-order debug comparison; simulator baseline succeeds.",
+    "Diagnostic wrapper logs production controller/engine/session; final normal app installed and launched afterward."
+  ]
+}

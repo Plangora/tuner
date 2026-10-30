@@ -27,7 +27,10 @@ class PracticeRuntime {
       repository: PreferencesMetronomeSettingsRepository(),
     );
     PracticeAudioHandler? handler;
-    if (nativePlayback) {
+    // iOS background ticking uses the native loop and UIBackgroundModes audio.
+    // Publishing a media handler would compete with the song's Now Playing
+    // metadata and commands. Android still needs its foreground media service.
+    if (nativePlayback && defaultTargetPlatform != TargetPlatform.iOS) {
       final candidate = PracticeAudioHandler(controller);
       try {
         handler = await background.AudioService.init(

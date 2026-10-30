@@ -30,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.check.outputs.version }}
+      targets: ${{ steps.check.outputs.targets }}
     steps:
       - uses: actions/checkout@v4
 
@@ -47,6 +48,20 @@ jobs:
           fi
 
           echo "version=$PUBSPEC_VERSION" >> "$GITHUB_OUTPUT"
+
+          # A release may explicitly select platforms without changing the
+          # default multi-platform behavior of other version tags.
+          TARGETS="ios,android,macos,web"
+          TARGETS_FILE=".github/release-targets/$PUBSPEC_VERSION"
+          if [ -f "$TARGETS_FILE" ]; then
+            TARGETS=$(tr -d '[:space:]' < "$TARGETS_FILE")
+          fi
+          if ! [[ "$TARGETS" =~ ^(ios|android|macos|web)(,(ios|android|macos|web))*$ ]]; then
+            echo "::error::Invalid release targets: $TARGETS"
+            exit 1
+          fi
+          echo "Release targets: $TARGETS"
+          echo "targets=$TARGETS" >> "$GITHUB_OUTPUT"
 
   test:
     name: Analyze & test
@@ -71,7 +86,8 @@ jobs:
 
   release-android:
     name: Release Android
-    needs: test
+    needs: [check-tag, test]
+    if: contains(needs.check-tag.outputs.targets, 'android')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -132,7 +148,8 @@ jobs:
 
   release-ios:
     name: Release iOS
-    needs: test
+    needs: [check-tag, test]
+    if: contains(needs.check-tag.outputs.targets, 'ios')
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -233,7 +250,8 @@ jobs:
 
   release-macos:
     name: Release macOS
-    needs: test
+    needs: [check-tag, test]
+    if: contains(needs.check-tag.outputs.targets, 'macos')
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -276,7 +294,8 @@ jobs:
 
   release-web:
     name: Release Web
-    needs: test
+    needs: [check-tag, test]
+    if: contains(needs.check-tag.outputs.targets, 'web')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
