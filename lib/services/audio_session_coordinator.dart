@@ -95,6 +95,9 @@ class DeviceAudioSessionCoordinator implements AudioSessionCoordinator {
 
   @override
   Future<void> activatePlayback() async {
+    // Android's shared-output metronome intentionally coexists with other
+    // media and does not participate in Android audio focus arbitration.
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) return;
     final session = await _ensureSession();
     if (session != null && !await session.setActive(true)) {
       throw StateError(
@@ -105,6 +108,7 @@ class DeviceAudioSessionCoordinator implements AudioSessionCoordinator {
 
   @override
   Future<void> deactivate() async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) return;
     await _session?.setActive(false);
   }
 

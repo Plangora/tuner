@@ -1,5 +1,42 @@
 # Metronome implementation and validation — 2026-10-29
 
+## Android mixing correction and iOS regression — 2026-10-30
+
+Android release testing on a Samsung SM-F9260, Android 15/API 35, found a
+separate audio-focus issue. The recorder requested permanent focus, while
+metronome playback requested transient ducking focus. Existing music was
+lowered to 20% volume, and starting music could interrupt the metronome.
+Android capture now disables the recorder's interruption/focus management;
+metronome activation/deactivation does not request or abandon audio focus.
+Its media-playback foreground service and system controls are retained.
+
+- On the physical Samsung, release-mode startup, repeated Start/Stop, tuner
+  microphone restoration and background/resume passed. An independent local
+  music fixture and the native metronome remained started in both playback
+  orderings, without the earlier focus conflict. The human subsequently
+  confirmed both remained audible with the Samsung locked.
+- A recorder-boundary regression test inspects the actual `RecordConfig`
+  passed to `startStream`: Android uses `none`, while iOS retains `pause`.
+  All 70 tests and the analyzer pass.
+- The same working tree was retested in release/AOT mode on iPhone 17 Pro Max,
+  iOS 27.2, using existing local development signing. Startup, three Stop/Start
+  cycles, microphone restoration, playback after tuner and background/resume
+  passed. Music-first mixing passed. The reverse-order check initially met a
+  Bluetooth route change and the existing explicit route-change pause;
+  SoLoud stayed initialized. After the human disconnected Bluetooth, the
+  built-in-speaker reverse-order check passed: both independent players
+  advanced concurrently from 05:38:50 through 05:39:25 UTC, including app
+  background/resume. Locked iPhone listening was not repeated; the earlier
+  human confirmation below remains separate evidence.
+- An initial temporary diagnostic asserted capture before queued resume work
+  completed. Awaiting that lifecycle work corrected the diagnostic; no
+  production change was needed for this assertion.
+- Normal main-entry apps were restored on both phones, temporary audio was
+  stopped, and existing app data was retained. These device checks used build
+  number 6 with the then-uncommitted Android correction; build 7 packages that
+  source with updated release metadata. No calibrated timing, endurance or
+  comprehensive Bluetooth/interruption result is established.
+
 ## Current iPhone mixing policy — 2026-10-30
 
 The human subsequently prioritised playing a song and the metronome together.

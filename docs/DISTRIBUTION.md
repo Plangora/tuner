@@ -70,6 +70,9 @@ version/build under `.github/release-targets/`, containing a comma-separated
 selection of `ios`, `android`, `macos` and/or `web`. Without a file, all four
 platforms run as before. Build `1.1.0+6` selects only `ios` for TestFlight;
 Android upload, macOS distribution and public web deployment are skipped.
+Build `1.1.0+7` selects `ios,android`: TestFlight upload and a Google Play
+internal-testing draft. It does not select public App Store/Play production
+rollout, macOS distribution or public web deployment.
 
 ## Version Management
 

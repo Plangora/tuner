@@ -13,6 +13,8 @@ typedef PitchCallback = void Function(double frequency);
 
 /// Manages audio recording and real-time pitch detection
 class AudioService implements TunerCapture {
+  AudioService({AudioRecorder? recorder}) : _audioRecorder = recorder;
+
   static const int sampleRate = 44100;
   static const int channelCount = 1;
 
@@ -55,10 +57,14 @@ class AudioService implements TunerCapture {
     _recorderStarted = true;
     try {
       _audioStream = await _audioRecorder!.startStream(
-        const RecordConfig(
+        RecordConfig(
           encoder: AudioEncoder.pcm16bits,
           sampleRate: sampleRate,
           numChannels: channelCount,
+          audioInterruption:
+              !kIsWeb && defaultTargetPlatform == TargetPlatform.android
+              ? AudioInterruptionMode.none
+              : AudioInterruptionMode.pause,
         ),
       );
       _isRecording = true;

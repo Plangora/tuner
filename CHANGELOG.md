@@ -14,6 +14,13 @@ verified store publication dates. The original `v1.0.0` tag points to
 `1.0.0+2`; later tags include the build number. Versions below follow
 release chronology, including the return from `1.0.1+3` to `1.0.0+4`.
 
+## [1.1.0+7] - Unreleased
+
+### Fixed
+
+- On Android, the tuner and metronome now mix with music from other apps
+  without lowering its volume or stopping when music starts.
+
 ## [1.1.0+6] - 2026-10-30
 
 ### Changed
