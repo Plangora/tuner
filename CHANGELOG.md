@@ -14,7 +14,7 @@ verified store publication dates. The original `v1.0.0` tag points to
 `1.0.0+2`; later tags include the build number. Versions below follow
 release chronology, including the return from `1.0.1+3` to `1.0.0+4`.
 
-## [1.1.0+7] - Unreleased
+## [1.1.0+7] - 2026-10-30
 
 ### Fixed
 
