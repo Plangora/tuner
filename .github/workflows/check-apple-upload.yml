@@ -2,6 +2,11 @@ name: Check Apple upload access
 
 on:
   workflow_dispatch:
+    inputs:
+      build_number:
+        description: Optional build number to inspect
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -10,45 +15,12 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Check app visibility and build status
         env:
           ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
           ASC_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
-        run: |
-          node --input-type=module <<'JS'
-          import { createPrivateKey, sign } from 'node:crypto';
-
-          const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
-          const now = Math.floor(Date.now() / 1000);
-          const data = [
-            encode({ alg: 'ES256', kid: process.env.ASC_KEY_ID, typ: 'JWT' }),
-            encode({ iss: process.env.ASC_ISSUER_ID, iat: now, exp: now + 300, aud: 'appstoreconnect-v1' }),
-          ].join('.');
-          const key = createPrivateKey(Buffer.from(process.env.ASC_KEY_CONTENT, 'base64'));
-          const signature = sign('sha256', Buffer.from(data), { key, dsaEncoding: 'ieee-p1363' });
-          const token = `${data}.${signature.toString('base64url')}`;
-
-          async function get(path, params) {
-            const url = new URL(`https://api.appstoreconnect.apple.com/v1/${path}`);
-            for (const [name, value] of Object.entries(params)) url.searchParams.set(name, value);
-            const response = await fetch(url, {
-              headers: { Authorization: `Bearer ${token}` },
-              signal: AbortSignal.timeout(30000),
-            });
-            const body = await response.json();
-            if (!response.ok) {
-              console.error(`Apple API HTTP ${response.status}:`, JSON.stringify(body.errors));
-              process.exit(1);
-            }
-            return body;
-          }
-
-          const apps = await get('apps', { 'filter[bundleId]': 'com.plangora.tuner' });
-          if (apps.data.length !== 1) throw new Error('API key cannot see exactly one Tuner app');
-          const app = apps.data[0];
-          console.log('Visible app:', JSON.stringify({ id: app.id, name: app.attributes.name, bundleId: app.attributes.bundleId }));
-          const builds = await get('builds', { 'filter[app]': app.id, 'filter[version]': '9', include: 'preReleaseVersion' });
-          console.log('Existing build 9 records:', JSON.stringify(builds.data.map(build => ({ id: build.id, version: build.attributes.version, processingState: build.attributes.processingState, preReleaseVersion: build.relationships.preReleaseVersion.data }))));
-          console.log('Marketing versions:', JSON.stringify(builds.included?.map(version => ({ id: version.id, version: version.attributes.version })) ?? []));
-          JS
+          ASC_BUILD_NUMBER: ${{ inputs.build_number }}
+        run: node .github/scripts/check-apple-access.mjs

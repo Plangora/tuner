@@ -154,6 +154,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check Apple app access and agreements
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          ASC_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+        run: node .github/scripts/check-apple-access.mjs
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}

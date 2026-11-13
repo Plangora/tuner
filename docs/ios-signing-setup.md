@@ -152,6 +152,23 @@ The `release-ios` job in `.github/workflows/release.yml` already uploads to Test
 
 ## Troubleshooting
 
+### Upload fails: "Cannot determine the Apple ID from Bundle ID"
+
+This message can hide an account-level failure even when the app exists and
+the same credentials uploaded earlier builds. Run the **Check Apple upload
+access** workflow to query App Store Connect directly without uploading.
+
+On 2026-11-13, build `1.1.0+9` failed with this message twice. The direct API
+returned `FORBIDDEN.REQUIRED_AGREEMENTS_MISSING_OR_EXPIRED`: a required agreement
+was unsigned or expired. The account holder must accept it under
+[Business → Agreements](https://appstoreconnect.apple.com/business) before the
+upload can proceed. Do not replace credentials or change the bundle ID for
+this error. The iOS release job now checks app access before building and
+reports this agreement requirement explicitly.
+
+After acceptance, check whether build 9 already exists before retrying the
+iOS-only job. Keep the existing release tag and successful Android upload.
+
 ### Build fails: "Certificate not found in Keychain"
 - Verify the certificate was imported correctly in Keychain Access
 - Check that P12_FILE and P12_PASSWORD secrets are set correctly
