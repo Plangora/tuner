@@ -1,6 +1,7 @@
 import 'dart:async';
+import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:tuner/models/note.dart';
 import 'package:tuner/services/practice_controller.dart';
 import 'package:tuner/models/metronome_state.dart';
@@ -105,50 +106,103 @@ class _TunerScreenState extends State<TunerScreen> {
             ? [_metronomeHeaderAction]
             : null,
       ),
-      body: widget.controller.state.error != null
-          ? _buildErrorView()
-          : _buildTunerView(),
+      body: SafeArea(
+        child: widget.controller.state.error != null
+            ? _buildErrorView()
+            : _buildTunerView(),
+      ),
     );
   }
 
   /// Builds error view with error message and retry button
   Widget _buildErrorView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.error, size: 48, color: AppColors.error),
-          const SizedBox(height: 16),
-          Text(
-            widget.controller.state.error ?? '',
-            textAlign: TextAlign.center,
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: math.max(0, constraints.maxHeight - 48),
           ),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            key: const ValueKey('open-metronome'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(220, 64),
-              foregroundColor: AppColors.cyan,
-              side: const BorderSide(color: AppColors.cyan, width: 1.5),
-              textStyle: Theme.of(context).textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            onPressed: _openMetronome,
-            icon: const MetronomeIcon(size: 30),
-            label: const Text('Metronome'),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error, size: 48, color: AppColors.error),
+              const SizedBox(height: 16),
+              Text(
+                widget.controller.state.error ?? '',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              OutlinedButton.icon(
+                key: const ValueKey('open-metronome'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(220, 64),
+                  foregroundColor: AppColors.cyan,
+                  side: const BorderSide(color: AppColors.cyan, width: 1.5),
+                  textStyle: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                onPressed: _openMetronome,
+                icon: const MetronomeIcon(size: 30),
+                label: const Text('Metronome'),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => widget.controller.enterTuner(),
+                child: const Text('Retry'),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () => widget.controller.enterTuner(),
-            child: const Text('Retry'),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   /// Builds main tuner view with gauge and status, sized to fill the screen.
   Widget _buildTunerView() {
+    final size = MediaQuery.sizeOf(context);
+    final largeText = MediaQuery.textScalerOf(context).scale(14) > 17;
+    if (size.width > size.height && !largeText) {
+      return LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    NoteDisplay(
+                      currentNote: _currentNote,
+                      detectedFrequency: _currentFrequency,
+                      noteFontSize: 64,
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 64,
+                      child: TuningStatus(
+                        centsOffset: _centsOffset,
+                        isInTune: _isInTune,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                child: SizedBox(
+                  height: math.max(180, constraints.maxHeight - 24),
+                  child: TunerGauge(
+                    centsOffset: _centsOffset,
+                    isInTune: _isInTune,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     final compact =
         MediaQuery.sizeOf(context).height < 650 ||
         MediaQuery.textScalerOf(context).scale(14) > 17;

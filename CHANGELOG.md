@@ -8,6 +8,20 @@ Changed or Fixed. It is marked **Unreleased** until it is tagged; replace
 that marker with the release date, and start a new section when the next
 version/build is chosen. Use that version's entries as its release notes.
 
+## [1.1.0+9] - 2026-11-13
+
+### Changed
+
+- Updated the app's development and release toolchain to Flutter 3.50.0.
+
+### Fixed
+
+- Turning the phone sideways keeps the tuner note, frequency, gauge and tuning
+  status visible together. Larger text remains scrollable, and tuner content
+  stays clear of notches and the home indicator.
+- Microphone error messages and recovery buttons remain reachable on short
+  screens and with larger text.
+
 ## [1.1.0+8] - 2026-10-30
 
 ### Added

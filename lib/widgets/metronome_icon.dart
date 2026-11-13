@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// A small, dependency-free metronome outline for the tuner navigation button.
 class MetronomeIcon extends StatelessWidget {

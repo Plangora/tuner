@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:tuner/theme/app_theme.dart';
 
 /// A custom gauge widget that displays tuning offset visually.

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:tuner/models/note.dart';
 import 'package:tuner/theme/app_theme.dart';
 
@@ -14,10 +14,14 @@ class NoteDisplay extends StatelessWidget {
   /// The detected frequency in Hz.
   final double detectedFrequency;
 
+  /// Note size can be reduced when the display shares a landscape row.
+  final double noteFontSize;
+
   const NoteDisplay({
     super.key,
     required this.currentNote,
     required this.detectedFrequency,
+    this.noteFontSize = 96,
   });
 
   @override
@@ -32,7 +36,7 @@ class NoteDisplay extends StatelessWidget {
           currentNote?.toString() ?? '--',
           style: textTheme.displayLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            fontSize: 96,
+            fontSize: noteFontSize,
             color: AppColors.cyan,
             shadows: AppTheme.glow(AppColors.cyan, blurRadius: 20),
           ),

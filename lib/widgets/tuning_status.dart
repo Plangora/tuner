@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:tuner/theme/app_theme.dart';
 
 /// A widget that displays the tuning status (In Tune, Flat, or Sharp).

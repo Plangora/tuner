@@ -76,6 +76,12 @@ rollout, macOS distribution or public web deployment.
 Build `1.1.0+8` selects the same platforms for this beta update; after the
 internal draft is uploaded, promote it to the existing closed Alpha track and
 the `tuner-alpha` tester list. Do not promote it to open testing or production.
+Build `1.1.0+9` selects `ios,android` for the landscape fixes and Flutter 3.50
+update. The workflow uploads to TestFlight and creates a Google Play internal
+testing draft. Further tester distribution, track promotion, store review and
+production rollout are separate steps. The changelog date records release
+tagging, not confirmed store publication. See [flutter-3.50-validation.md](flutter-3.50-validation.md)
+for validation results and remaining limitations.
 
 ## Version Management
 
@@ -203,7 +209,7 @@ No official storefront setup needed. If hosting on GitHub:
 
 ## Metronome development and validation
 
-Use the project-local asdf pin, Flutter `3.47.8-stable` (`asdf exec flutter --version`). Test CI matches 3.47.8; keep release workflow changes coordinated with that toolchain.
+Use the project-local asdf pin, Flutter `3.50.0-stable` (`asdf exec flutter --version`). Test and release CI both use 3.50.0; keep these pins coordinated with that toolchain.
 
 The tuner remains the launch screen. Its app-bar timer action opens the separate metronome. Returning stops clicks before restoring the microphone. Settings persist; audible playback never restores automatically. Tempo/pattern changes restart the bar, while volume changes apply without restarting.
 
